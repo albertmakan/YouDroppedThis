@@ -1,0 +1,28 @@
+- setup backend
+- user registration, login
+- setup database
+- artwork and canvas endpoints
+- websocket
+- artwork expiration
+- frontend setup
+- fullscreen canvas
+- pan and zoom, touch enabled
+- show artworks on coordinates
+- place artwork
+- pixel art editor, touch enabled
+- get time right!!!
+- info about artwork
+- collect artwork (improve)
+
+- view profile (collection, stats)
+- canvas texture
+- lazy loading
+- expression in editor
+- show adjacent artworks in editor (using scroll and pinch)
+- notifications
+- disappear animation
+- define economy
+- buying coins
+- daily themes
+- saving coordinates
+- deploy on cloud
