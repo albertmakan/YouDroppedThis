@@ -28,7 +28,6 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token')
-      window.location.href = '/login'
     }
     return Promise.reject(error)
   },
@@ -76,9 +75,22 @@ export const artworkApi = {
     return response.data as { artwork: Artwork; user: User }
   },
 
-  async getUserArtworks(type: 'placed' | 'collected' | 'all' = 'all') {
-    const response = await api.get('/artwork/mine', { params: { type } })
-    return response.data as { artworks: Artwork[] }
+  async getUserArtworks(
+    type: 'placed' | 'collected' | 'all' = 'all',
+    page: number = 1,
+    limit: number = 12,
+  ): Promise<{ artworks: Artwork[]; total: number }> {
+    const response = await api.get('/artwork/mine', {
+      params: {
+        type,
+        page,
+        limit,
+      },
+    })
+    return {
+      artworks: response.data.artworks,
+      total: response.data.total,
+    }
   },
 }
 

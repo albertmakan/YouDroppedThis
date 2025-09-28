@@ -13,11 +13,13 @@
 - get time right!!!
 - info about artwork
 - collect artwork (improve)
-
 - view profile (collection, stats)
-- canvas texture
-- lazy loading
-- expression in editor
+- jump to coordinate
+- lazy loading (calculate chunk IDs from vx,vy,w,h,zoom)
+
+- canvas texture ~
+- Multi-Level Caching
+- expression in editor 
 - show adjacent artworks in editor (using scroll and pinch)
 - notifications
 - disappear animation

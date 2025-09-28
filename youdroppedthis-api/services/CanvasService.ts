@@ -17,17 +17,13 @@ export class CanvasService {
 
     // Get all active (non-expired, non-collected) artworks
     const result = await db.queryObject<Artwork & { username: string }>(
-      `SELECT a.*, u.username,
-              EXTRACT(EPOCH FROM (a.expires_at - NOW())) as time_remaining
+      `SELECT a.*, u.username
        FROM artworks a
        JOIN users u ON a.user_id = u.id
        WHERE a.is_expired = FALSE AND a.collected_by IS NULL`
     );
 
-    const artworks = result.rows.map((row) => ({
-      ...row,
-      time_remaining: Math.max(0, Math.floor(row.time_remaining || 0)),
-    }));
+    const artworks = result.rows;
 
     // Calculate bounds
     let bounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -35,9 +31,9 @@ export class CanvasService {
     if (artworks.length > 0) {
       bounds = {
         minX: Math.min(...artworks.map((a) => a.x)),
-        maxX: Math.max(...artworks.map((a) => a.x + a.width)),
+        maxX: Math.max(...artworks.map((a) => a.x + 1)),
         minY: Math.min(...artworks.map((a) => a.y)),
-        maxY: Math.max(...artworks.map((a) => a.y + a.height)),
+        maxY: Math.max(...artworks.map((a) => a.y + 1)),
       };
     }
 
@@ -53,28 +49,22 @@ export class CanvasService {
     const db = getDB();
 
     const result = await db.queryObject<Artwork & { username: string }>(
-      `SELECT a.*, u.username,
-              EXTRACT(EPOCH FROM (a.expires_at - NOW())) as time_remaining
+      `SELECT a.*, u.username
        FROM artworks a
        JOIN users u ON a.user_id = u.id
        WHERE a.is_expired = FALSE 
          AND a.collected_by IS NULL
-         AND a.x < $2 AND (a.x + a.width) > $1
-         AND a.y < $4 AND (a.y + a.height) > $3`,
+         AND a.x < $2 AND a.x >= $1
+         AND a.y < $4 AND a.y >= $3`,
       [minX, maxX, minY, maxY]
     );
 
-    return result.rows.map((row) => ({
-      ...row,
-      time_remaining: Math.max(0, Math.floor(row.time_remaining || 0)),
-    }));
+    return result.rows;
   }
 
   static async checkCollision(
     x: number,
     y: number,
-    width: number,
-    height: number,
     excludeId?: number
   ): Promise<boolean> {
     const db = getDB();
@@ -84,10 +74,9 @@ export class CanvasService {
       FROM artworks
       WHERE is_expired = FALSE 
         AND collected_by IS NULL
-        AND x < $2 AND (x + width) > $1
-        AND y < $4 AND (y + height) > $3
+        AND x = $1 AND y = $2
     `;
-    const params = [x, x + width, y, y + height];
+    const params = [x, y];
 
     if (excludeId) {
       query += " AND id != $5";

@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCanvasStore } from '@/stores/canvas'
 
@@ -15,10 +15,16 @@ const canvasStore = useCanvasStore()
 onMounted(async () => {
   // Try to load user if token exists
   await authStore.loadUser()
-
-  // Start WebSocket connection if authenticated
-  if (authStore.isAuthenticated) {
-    canvasStore.startWebSocketConnection()
-  }
 })
+
+watch(
+  () => authStore.isAuthenticated,
+  async () => {
+    if (authStore.isAuthenticated) {
+      canvasStore.startWebSocketConnection()
+    } else {
+      canvasStore.stopWebSocketConnection()
+    }
+  },
+)
 </script>

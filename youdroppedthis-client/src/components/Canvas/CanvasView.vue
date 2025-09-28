@@ -1,38 +1,7 @@
 <template>
   <div class="w-full h-screen overflow-hidden">
-    <!-- Controls
-     <div class="controls">
-      <div class="user-info">
-        <span class="balance">Balance: {{ user?.balance }} coins</span>
-        <span class="artworks-count"
-          >{{ canvasStore.activeArtworks.length }} artworks on canvas</span
-        >
-      </div>
-
-      <div class="actions">
-        <button
-          @click="enterPlacementMode"
-          :disabled="placementMode || (user?.balance || 0) < -10"
-          class="btn btn-place"
-        >
-          {{ placementMode ? 'Click to Place' : 'Place Art (10 coins)' }}
-        </button>
-        <button class="zoom-info" @click="resetZoom">Zoom: {{ Math.round(zoom * 100) }}%</button>
-      </div>
-    </div>
-
-     Instructions
-    <div class="instructions">
-      <p v-if="!authToken" class="warning">⚠️ Please log in to place and collect artwork</p>
-      <p v-else-if="placementMode" class="active">🎨 Click anywhere to place your artwork</p>
-      <p v-else>
-        🖱️ <strong>Drag</strong> to pan • <strong>Scroll</strong> to zoom •
-        <strong>Ctrl+Click</strong> to collect
-      </p>
-    </div> -->
-
     <div
-      class="fixed top-0 left-0 rounded-br-md backdrop-blur-xl text-neutral-200 bg-black/50 p-2 font-bold"
+      class="fixed top-0 left-0 rounded-br-md backdrop-blur-xl text-[#14B8A6] bg-black/50 p-2 z-10 font-bold"
     >
       YouDroppedThis
     </div>
@@ -41,10 +10,18 @@
       <ProfileButton />
     </div>
 
-    <div class="fixed bottom-0 left-0 p-2">
+    <div class="fixed bottom-0 left-0 p-2 z-10">
       <div class="text-xs font-mono backdrop-blur-xl text-neutral-200 bg-black/50 p-1 rounded-md">
-        <div>Canvas coords: ({{ Math.round(viewX) }}, {{ Math.round(viewY) }})</div>
-        <div>Visible artworks: {{ canvasStore.activeArtworks.length }}</div>
+        <div>
+          Canvas coords: ({{ Math.floor(viewX / zoomedArtSize) }},
+          {{ Math.floor(viewY / zoomedArtSize) }})
+        </div>
+        <div>
+          W: {{ (viewportWidth / zoomedArtSize).toFixed(1) }}, H:
+          {{ (viewportHeight / zoomedArtSize).toFixed(1) }}
+        </div>
+        <div>Visible artworks: //todo</div>
+        <div>Chunks: {{ (chunks.cx2 - chunks.cx1 + 1) * (chunks.cy2 - chunks.cy1 + 1) }}</div>
       </div>
       <button
         class="rounded-full border border-current size-6 backdrop-blur-xl text-neutral-200 bg-black/50 font-mono"
@@ -62,7 +39,7 @@
     <div v-if="authStore.isAuthenticated" class="fixed bottom-0 right-0 p-2 z-20">
       <button
         @click="togglePlacementMode"
-        :disabled="(user?.balance || 0) < -10"
+        :disabled="(authStore.user?.balance || 0) < -10"
         class="size-10 hover:scale-110 relative rounded-md border-2 border-dashed border-current backdrop-blur-xl text-neutral-200 bg-black/50 cursor-pointer disabled:opacity-50"
         :class="{}"
       >
@@ -74,8 +51,6 @@
               resolution: editorStore.resolution as any,
               created_at: '',
               expires_at: '',
-              height: 64,
-              width: 64,
               id: 0,
               is_expired: false,
               pixel_data: '',
@@ -96,9 +71,10 @@
       />
     </div>
 
-    <!-- Canvas -->
     <canvas
       ref="canvasRef"
+      :width="viewportWidth"
+      :height="viewportHeight"
       @mousedown="handleMouseDown"
       @mousemove="handleMouseMove"
       @mouseup="handleMouseUp"
@@ -109,13 +85,13 @@
       @touchend="handleTouchEnd"
       @contextmenu.prevent="handleContextMenu"
       @click="handleClick"
-      class=""
+      @dblclick="handleContextMenu"
       :class="{
         'cursor-grabbing': isDragging,
         'cursor-crosshair': placementMode,
         'cursor-grab': !placementMode,
       }"
-    ></canvas>
+    />
 
     <div
       v-if="placementPreview"
@@ -123,8 +99,8 @@
       :style="{
         left: `${placementPreview.x}px`,
         top: `${placementPreview.y}px`,
-        width: `${ART_SIZE * zoom}px`,
-        height: `${ART_SIZE * zoom}px`,
+        width: `${zoomedArtSize}px`,
+        height: `${zoomedArtSize}px`,
       }"
     >
       <div class="relative h-full">
@@ -137,7 +113,7 @@
             class="size-5 text-neutral-700"
             :title="'Expires at ' + new Date(selectedArtwork!.expires_at)"
           >
-            <TimeRemainingIcon :remaining="placementPreview.t <= 0 ? 0 : placementPreview.t" />
+            <TimeRemainingIcon :remaining="Math.max(placementPreview.t, 0)" />
           </div>
         </div>
         <div
@@ -158,8 +134,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useCanvasStore } from '@/stores/canvas'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import {
+  ART_SIZE,
+  CANVAS_SIZE,
+  CHUNK_SIZE,
+  MAX_ZOOM,
+  MIN_ZOOM,
+  useCanvasStore,
+} from '@/stores/canvas'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import { artworkApi } from '@/services/api'
@@ -171,26 +154,26 @@ import PlusIcon from '@/components/Icons/PlusIcon.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import TimeRemainingIcon from '../Icons/TimeRemainingIcon.vue'
 import CollectIcon from '../Icons/CollectIcon.vue'
+import { useRoute } from 'vue-router'
 
 const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
 const editorStore = useEditorStore()
+const route = useRoute()
 
 // Canvas refs and state
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const ctx = ref<CanvasRenderingContext2D | null>(null)
 
-// Canvas properties
-const CANVAS_SIZE = 1024
-const ART_SIZE = 64
-const VIEWPORT_WIDTH = 2048
-const VIEWPORT_HEIGHT = 1024
-
 // View state
 const viewX = ref(0)
 const viewY = ref(0)
+const viewportWidth = ref(window.innerWidth)
+const viewportHeight = ref(window.innerHeight)
 const zoom = ref(1)
 const lastZoom = ref(1)
+const zoomedArtSize = computed(() => ART_SIZE * zoom.value)
+const zoomedChunkSize = computed(() => zoomedArtSize.value * CHUNK_SIZE)
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
 const selectedLocation = ref({ x: 0, y: 0 })
@@ -203,51 +186,60 @@ const placementMode = ref(false)
 const selectedArtwork = ref<Artwork | null>(null)
 const placementPreview = computed(() => {
   if (!selectedArtwork.value) return null
+  const expirationTime = new Date(selectedArtwork.value.expires_at).getTime()
   return {
-    x: selectedArtwork.value.x * zoom.value - viewX.value,
-    y: selectedArtwork.value.y * zoom.value - viewY.value,
+    x: selectedArtwork.value.x * zoomedArtSize.value - viewX.value,
+    y: selectedArtwork.value.y * zoomedArtSize.value - viewY.value,
     t:
-      (new Date(selectedArtwork.value.expires_at).getTime() - Date.now()) /
-      (new Date(selectedArtwork.value.expires_at).getTime() -
-        new Date(selectedArtwork.value.created_at).getTime()),
+      (expirationTime - Date.now()) /
+      (expirationTime - new Date(selectedArtwork.value.created_at).getTime()),
   }
 })
 
-// User state
-const { user, token: authToken } = authStore /// fix when login
+watch(
+  () => route.query,
+  ({ x, y }) => setLocation(+(x ?? 0), +(y ?? 0)),
+  { deep: true },
+)
 
-// Computed properties
-// computed(() => {
-//   // Only render artworks visible in current viewport
-//   const margin = 100 // Extra margin for smooth scrolling
-//   const left = viewX.value / zoom.value - margin
-//   const top = viewY.value / zoom.value - margin
-//   const right = left + VIEWPORT_WIDTH / zoom.value + margin * 2
-//   const bottom = top + VIEWPORT_HEIGHT / zoom.value + margin * 2
-
-//   return artworks.filter(
-//     (art) => art.x < right && art.x + ART_SIZE > left && art.y < bottom && art.y + ART_SIZE > top,
-//   )
-// })
+const chunks = computed(() => {
+  const cx1 = Math.max(Math.floor(viewX.value / zoomedChunkSize.value), 0)
+  const cx2 = Math.min(
+    Math.floor((viewX.value + viewportWidth.value) / zoomedChunkSize.value),
+    CANVAS_SIZE / CHUNK_SIZE,
+  )
+  const cy1 = Math.max(Math.floor(viewY.value / zoomedChunkSize.value), 0)
+  const cy2 = Math.min(
+    Math.floor((viewY.value + viewportHeight.value) / zoomedChunkSize.value),
+    CANVAS_SIZE / CHUNK_SIZE,
+  )
+  for (let cx = cx1; cx <= cx2; cx++) {
+    for (let cy = cy1; cy <= cy2; cy++) {
+      const chunk = canvasStore.canvasChunks[cy]?.[cx]
+      if (!chunk?.arts && !chunk?.isLoading) {
+        canvasStore.loadChunk(cx, cy, zoom.value)
+      }
+    }
+  }
+  return { cx1, cx2, cy1, cy2 }
+})
 
 // Canvas utilities
 function getCanvasCoordinates(clientX: number, clientY: number) {
   if (!canvasRef.value) return { x: 0, y: 0 }
   const rect = canvasRef.value.getBoundingClientRect()
-  const x = (clientX - rect.left + viewX.value) / zoom.value
-  const y = (clientY - rect.top + viewY.value) / zoom.value
-  return { x, y }
+  const x = (clientX - rect.left + viewX.value) / zoomedArtSize.value
+  const y = (clientY - rect.top + viewY.value) / zoomedArtSize.value
+  return { x: Math.floor(x), y: Math.floor(y) }
 }
 
-function snapToGrid(x: number, y: number) {
-  return {
-    x: Math.floor(x / ART_SIZE) * ART_SIZE,
-    y: Math.floor(y / ART_SIZE) * ART_SIZE,
+function setLocation(x: number, y: number) {
+  if (x) {
+    viewX.value = x * zoomedArtSize.value
   }
-}
-
-function resetZoom() {
-  zoom.value = 1
+  if (y) {
+    viewY.value = y * zoomedArtSize.value
+  }
 }
 
 function getEventLocation(e: MouseEvent | TouchEvent) {
@@ -261,7 +253,7 @@ async function openEditor(x: number, y: number) {
 }
 
 async function placeArtwork(pixelData: string, resolution: any) {
-  if (!authToken) {
+  if (!authStore.token) {
     alert('Please log in to place artwork')
     return
   }
@@ -283,7 +275,7 @@ async function placeArtwork(pixelData: string, resolution: any) {
 }
 
 async function collectArtwork() {
-  if (!authToken) {
+  if (!authStore.token) {
     alert('Please log in to collect artwork')
     return
   }
@@ -305,99 +297,92 @@ async function collectArtwork() {
 // Canvas rendering
 function renderCanvas() {
   if (!ctx.value || !canvasRef.value) return
-
   const canvas = canvasRef.value
-  canvas.width = VIEWPORT_WIDTH
-  canvas.height = VIEWPORT_HEIGHT
-
-  // Clear canvas
-  ctx.value.fillStyle = 'oklch(12.9% 0.042 264.695)'
-  ctx.value.fillRect(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
-
-  // Draw grid (optional, for development)
-  // ctx.value.strokeStyle = '#e0e0e0'
-  // ctx.value.lineWidth = 0.5
-
-  // const gridSize = ART_SIZE * zoom.value
-  // const offsetX = -viewX.value % gridSize
-  // const offsetY = -viewY.value % gridSize
-
-  // if (zoom.value > 0.5) {
-  //   // Only show grid when zoomed in enough
-  //   for (let x = offsetX; x < VIEWPORT_WIDTH; x += gridSize) {
-  //     ctx.value.beginPath()
-  //     ctx.value.moveTo(x, 0)
-  //     ctx.value.lineTo(x, VIEWPORT_HEIGHT)
-  //     ctx.value.stroke()
-  //   }
-
-  //   for (let y = offsetY; y < VIEWPORT_HEIGHT; y += gridSize) {
-  //     ctx.value.beginPath()
-  //     ctx.value.moveTo(0, y)
-  //     ctx.value.lineTo(VIEWPORT_WIDTH, y)
-  //     ctx.value.stroke()
-  //   }
-  // }
   const context = ctx.value
 
-  // Draw artworks
-  canvasStore.activeArtworks.forEach((artwork, i) => {
-    const x = artwork.x * zoom.value - viewX.value
-    const y = artwork.y * zoom.value - viewY.value
-    const size = ART_SIZE * zoom.value
-    const pixelSize = size / artwork.resolution
+  // Clear canvas
+  context.fillStyle = 'oklch(27.7% 0.046 192.524)'
+  context.fillRect(0, 0, canvas.width, canvas.height)
 
-    artwork.pixels ||= artwork.pixel_data.startsWith('[[')
-      ? JSON.parse(artwork.pixel_data)
-      : Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '#ff0000'))
-
-    for (let pixelY = 0; pixelY < artwork.resolution; pixelY++) {
-      for (let pixelX = 0; pixelX < artwork.resolution; pixelX++) {
-        context.fillStyle = artwork.pixels![pixelY][pixelX] || 'transparent'
-        context.fillRect(
-          x + pixelX * pixelSize,
-          y + pixelY * pixelSize,
-          pixelSize + (pixelX === artwork.resolution - 1 ? 0 : 1),
-          pixelSize + (pixelY === artwork.resolution - 1 ? 0 : 1),
-        )
+  // Draw grid (optional, for development)
+  if (zoom.value > 0.5) {
+    context.strokeStyle = '#ffffff'
+    context.lineWidth = 2
+    const gridSize = zoomedArtSize.value
+    const offsetX = -viewX.value % gridSize
+    const offsetY = -viewY.value % gridSize
+    for (let y = offsetY; y < canvas.height; y += gridSize) {
+      for (let x = offsetX; x < canvas.width; x += gridSize) {
+        context.beginPath()
+        context.moveTo(x, y)
+        context.lineTo(x + 2, y)
+        context.stroke()
       }
     }
+  }
 
-    // Draw timer indicator
-    if (artwork.time_remaining) {
-      const progress = artwork.time_remaining / (24 * 60 * 60 * 1000) // 24 hours
-      context.fillStyle = `rgba(255, 0, 0, ${1 - progress})`
-      context.fillRect(x, y - 4, size * progress, 2)
+  // Draw artworks
+  const { cx1, cx2, cy1, cy2 } = chunks.value
+  for (let cx = cx1; cx <= cx2; cx++) {
+    for (let cy = cy1; cy <= cy2; cy++) {
+      const chunk = canvasStore.canvasChunks[cy]?.[cx]
+      if (chunk?.isLoading) {
+        context.fillStyle = 'rgb(255,255,255,0.4)'
+        const x = cx * zoomedChunkSize.value - viewX.value
+        const y = cy * zoomedChunkSize.value - viewY.value
+        context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
+      } else {
+        chunk?.arts?.forEach((artwork) => drawArtwork(artwork, context))
+      }
     }
-  })
+  }
 
   // Draw placement preview
   if (placementMode.value && selectedArt.value) {
-    const x = selectedArt.value.x * zoom.value - viewX.value
-    const y = selectedArt.value.y * zoom.value - viewY.value
-    const size = ART_SIZE * zoom.value
+    const x = selectedArt.value.x * zoomedArtSize.value - viewX.value
+    const y = selectedArt.value.y * zoomedArtSize.value - viewY.value
+    const size = zoomedArtSize.value
 
-    ctx.value.strokeStyle = '#ffffff'
-    ctx.value.lineWidth = 2
-    ctx.value.setLineDash([5, 5])
-    ctx.value.strokeRect(x, y, size, size)
-    ctx.value.setLineDash([])
+    context.strokeStyle = '#ffffff'
+    context.lineWidth = 2
+    context.setLineDash([5, 5])
+    context.strokeRect(x, y, size, size)
+    context.setLineDash([])
+  }
+}
+
+function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D) {
+  if (artwork.is_expired || artwork.collected_by) {
+    return
+  }
+  const x = artwork.x * zoomedArtSize.value - viewX.value
+  const y = artwork.y * zoomedArtSize.value - viewY.value
+  const pixelSize = zoomedArtSize.value / artwork.resolution
+  // check if outside view
+  artwork.pixels ||= artwork.pixel_data.startsWith('[[') // in api?
+    ? JSON.parse(artwork.pixel_data)
+    : Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '#ff0000'))
+
+  for (let pixelY = 0; pixelY < artwork.resolution; pixelY++) {
+    for (let pixelX = 0; pixelX < artwork.resolution; pixelX++) {
+      context.fillStyle = artwork.pixels![pixelY][pixelX] || 'transparent'
+      context.fillRect(
+        x + pixelX * pixelSize,
+        y + pixelY * pixelSize,
+        pixelSize + (pixelX === artwork.resolution - 1 ? 0 : 1),
+        pixelSize + (pixelY === artwork.resolution - 1 ? 0 : 1),
+      )
+    }
   }
 }
 
 function handleContextMenu(event: MouseEvent) {
   const { x, y } = getEventLocation(event)
   const coords = getCanvasCoordinates(x, y)
-  const clickedArtwork = canvasStore.activeArtworks.find(
-    (art) =>
-      coords.x >= art.x &&
-      coords.x < art.x + ART_SIZE &&
-      coords.y >= art.y &&
-      coords.y < art.y + ART_SIZE,
-  )
+  const clickedArtwork = canvasStore.getArtworkAt(coords.x, coords.y)
 
   if (clickedArtwork) {
-    if (selectedArtwork.value === clickedArtwork) selectedArtwork.value = null
+    if (selectedArtwork.value?.id === clickedArtwork.id) selectedArtwork.value = null
     else selectedArtwork.value = clickedArtwork
   }
 }
@@ -407,22 +392,10 @@ function handleClick(event: MouseEvent | TouchEvent) {
   const coords = getCanvasCoordinates(x, y)
 
   if (placementMode.value) {
-    // Place artwork mode
-    const snapped = snapToGrid(coords.x, coords.y)
-
-    if (
-      snapped.x >= 0 &&
-      snapped.y >= 0 &&
-      snapped.x + ART_SIZE <= CANVAS_SIZE &&
-      snapped.y + ART_SIZE <= CANVAS_SIZE
-    ) {
-      // Check if position is occupied
-      const occupied = canvasStore.activeArtworks.some(
-        (art) => art.x === snapped.x && art.y === snapped.y,
-      )
-
+    if (coords.x >= 0 && coords.y >= 0 && coords.x < CANVAS_SIZE && coords.y < CANVAS_SIZE) {
+      const occupied = canvasStore.getArtworkAt(coords.x, coords.y)
       if (!occupied) {
-        openEditor(snapped.x, snapped.y)
+        openEditor(coords.x, coords.y)
       } else {
         alert('Position already occupied!')
       }
@@ -467,8 +440,7 @@ function handleMouseMove(event: MouseEvent | TouchEvent) {
   } else if (placementMode.value) {
     // Update placement preview
     const coords = getCanvasCoordinates(x, y)
-    const snapped = snapToGrid(coords.x, coords.y)
-    selectedArt.value = snapped
+    selectedArt.value = coords
   }
 }
 
@@ -478,21 +450,21 @@ function handleMouseUp() {
   lastZoom.value = zoom.value
 }
 
+function setZoom(newZoom: number, centerX: number, centerY: number) {
+  const zoomChange = newZoom / zoom.value
+  viewX.value = -centerX + (viewX.value + centerX) * zoomChange
+  viewY.value = -centerY + (viewY.value + centerY) * zoomChange
+  zoom.value = newZoom
+}
+
 function handleWheel(event: WheelEvent) {
   const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1
-  const newZoom = Math.max(0.1, Math.min(10, zoom.value * zoomFactor))
-
+  const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom.value * zoomFactor))
   // Zoom towards mouse position
   if (!canvasRef.value) return
-  const rect = canvasRef.value.getBoundingClientRect()
-  const mouseX = event.clientX - rect.left
-  const mouseY = event.clientY - rect.top
-
-  const zoomChange = newZoom / zoom.value
-  viewX.value = -mouseX + (viewX.value + mouseX) * zoomChange
-  viewY.value = -mouseY + (viewY.value + mouseY) * zoomChange
-
-  zoom.value = newZoom
+  const centerX = event.clientX
+  const centerY = event.clientY
+  setZoom(newZoom, centerX, centerY)
 }
 
 function handlePinch(e: TouchEvent) {
@@ -506,18 +478,17 @@ function handlePinch(e: TouchEvent) {
     initialPinchDistance.value = currentDistance
   } else {
     const zoomFactor = currentDistance / initialPinchDistance.value
-    const newZoom = Math.max(0.1, Math.min(10, lastZoom.value * zoomFactor))
-    // Zoom towards mouse position
+    const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, lastZoom.value * zoomFactor))
+    // Zoom towards pinch center
     if (!canvasRef.value) return
-    const mouseX = (touch1.x + touch2.x) / 2
-    const mouseY = (touch1.y + touch2.y) / 2
-
-    const zoomChange = newZoom / zoom.value
-    viewX.value = -mouseX + (viewX.value + mouseX) * zoomChange
-    viewY.value = -mouseY + (viewY.value + mouseY) * zoomChange
-
-    zoom.value = newZoom
+    const centerX = (touch1.x + touch2.x) / 2
+    const centerY = (touch1.y + touch2.y) / 2
+    setZoom(newZoom, centerX, centerY)
   }
+}
+
+function resetZoom() {
+  setZoom(1, viewportWidth.value / 2, viewportHeight.value / 2)
 }
 
 function handleTouchStart(e: TouchEvent) {
@@ -549,7 +520,7 @@ function handleTouchMove(e: TouchEvent) {
 
 // UI actions
 function togglePlacementMode() {
-  if ((user?.balance || 0) < -10) {
+  if ((authStore.user?.balance || 0) < -10) {
     alert('Insufficient balance! You need 10 coins to place artwork.')
     return
   }
@@ -566,20 +537,24 @@ function animate() {
 
 // Lifecycle
 onMounted(() => {
-  canvasStore.loadCanvasState() //fetchCanvas()
   if (canvasRef.value) {
     ctx.value = canvasRef.value.getContext('2d')
     animate()
   }
-
-  // Refresh canvas data periodically
-  // const interval = setInterval(fetchCanvas, 10000) // Every 10 seconds
+  function resize() {
+    viewportWidth.value = window.innerWidth
+    viewportHeight.value = window.innerHeight
+  }
+  window.addEventListener('resize', resize)
+  resize()
+  const { x, y } = route.query
+  setLocation(+(x ?? 0), +(y ?? 0))
 
   onUnmounted(() => {
-    // clearInterval(interval)
     if (animationFrame) {
       cancelAnimationFrame(animationFrame)
     }
+    window.removeEventListener('resize', resize)
   })
 })
 </script>

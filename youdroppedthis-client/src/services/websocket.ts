@@ -61,13 +61,17 @@ export function useWebSocket() {
         }
       }
 
-      service.value.socket.onclose = () => {
-        console.log('🔌 WebSocket disconnected')
+      service.value.socket.onclose = (closeEvent) => {
+        console.log('🔌 WebSocket disconnected:', closeEvent.code)
         service.value.isConnected = false
         service.value.socket = null
 
         // Attempt reconnection
-        if (service.value.reconnectAttempts < service.value.maxReconnectAttempts) {
+        const shouldReconnect = closeEvent.code !== 1005 //?
+        if (
+          service.value.reconnectAttempts < service.value.maxReconnectAttempts &&
+          shouldReconnect
+        ) {
           service.value.reconnectAttempts++
           console.log(
             `🔄 Attempting reconnection ${service.value.reconnectAttempts}/${service.value.maxReconnectAttempts}`,

@@ -4,8 +4,6 @@ export interface Artwork {
   username?: string;
   x: number;
   y: number;
-  width: number;
-  height: number;
   resolution: 16 | 32 | 64;
   pixel_data: string; // JSON string
   created_at: string;
@@ -13,5 +11,4 @@ export interface Artwork {
   collected_by?: number;
   collected_at?: string;
   is_expired: boolean;
-  time_remaining?: number;
 }

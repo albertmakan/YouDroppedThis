@@ -1,4 +1,5 @@
-export function formatDate(dateString: string): string {
+export function formatDate(dateString?: string): string {
+  if (!dateString) return ''
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -8,7 +9,11 @@ export function formatDate(dateString: string): string {
 
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
-  return `${diffDays}d ago`
+  if (diffDays === 0) return 'today'
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  return `${Math.floor(diffDays / 30)} months ago`
 }
 
 export function formatTimeRemaining(seconds: number): string {

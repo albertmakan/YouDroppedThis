@@ -13,8 +13,6 @@ export interface Artwork {
   username?: string
   x: number
   y: number
-  width: number
-  height: number
   resolution: 16 | 32 | 64
   pixel_data: string // JSON string of hex colors
   pixels?: string[][]
@@ -23,7 +21,6 @@ export interface Artwork {
   collected_by?: number
   collected_at?: string
   is_expired: boolean
-  time_remaining?: number // seconds
 }
 
 export interface Transaction {
@@ -53,19 +50,20 @@ export interface CanvasState {
   }
 }
 
-export interface WebSocketMessage {
-  type:
-    | 'artwork_placed'
-    | 'artwork_collected'
-    | 'artwork_expired'
-    | 'user_update'
-    | 'auth'
-    | 'ping'
-    | 'pong'
-  data?: any
+export type WebSocketMessage = {
   userId?: number
-}
-
+} & (
+  | { type: 'artwork_placed'; data: Artwork }
+  | {
+      type: 'artwork_collected'
+      data: { collected: { id: number; x: number; y: number }; collectorId: number }
+    }
+  | {
+      type: 'artwork_expired'
+      data: { expired: { id: number; x: number; y: number }[] }
+    }
+  | { type: 'user_update' | 'auth' | 'ping' | 'pong'; data?: any }
+)
 export interface AuthResponse {
   user: User
   token: string

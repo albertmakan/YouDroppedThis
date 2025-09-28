@@ -1,6 +1,6 @@
 import { getDB } from "../config/database.ts";
 import { Artwork } from "../models/Artwork.ts";
-import { PLACEMENT_FEE, ARTWORK_EXPIRY_HOURS } from "../config/env.ts";
+import { PLACEMENT_FEE } from "../config/env.ts";
 import { CanvasService } from "./CanvasService.ts";
 import { UserService } from "./UserService.ts";
 import { WebSocketService } from "./WebSocketService.ts";
@@ -28,9 +28,7 @@ export class ArtworkService {
     // Check for collisions
     const hasCollision = await CanvasService.checkCollision(
       placement.x,
-      placement.y,
-      64, // Fixed artwork size
-      64
+      placement.y
     );
 
     if (hasCollision) {
@@ -87,7 +85,6 @@ export class ArtworkService {
         data: {
           ...artwork,
           username: user.username,
-          time_remaining: ARTWORK_EXPIRY_HOURS * 3600,
         },
       });
 
@@ -146,7 +143,10 @@ export class ArtworkService {
     // Broadcast collection event
     WebSocketService.broadcast({
       type: "artwork_collected",
-      data: { artworkId, collectorId: userId },
+      data: {
+        collected: { id: artworkId, x: artwork.x, y: artwork.y },
+        collectorId: userId,
+      },
     });
 
     return { artwork, user };
@@ -154,41 +154,79 @@ export class ArtworkService {
 
   static async getUserArtworks(
     userId: number,
-    type: "placed" | "collected" | "all"
-  ) {
+    type: "placed" | "collected" | "all" = "all",
+    page: number = 1,
+    limit: number = 12
+  ): Promise<{ artworks: Artwork[]; total: number }> {
     const db = getDB();
+    const offset = (page - 1) * limit;
 
+    // Build the main query
     let query = `
-      SELECT a.*, u.username,
-             EXTRACT(EPOCH FROM (a.expires_at - NOW())) as time_remaining
+      SELECT a.*, u.username
       FROM artworks a
       JOIN users u ON a.user_id = u.id
       WHERE 1=1
     `;
-    const params = [];
 
+    // Build the count query
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM artworks a
+      WHERE 1=1
+    `;
+
+    const params = [];
+    let paramIndex = 1;
+
+    // Add type-specific conditions
     if (type === "placed") {
-      query += " AND a.user_id = $1";
+      const condition = ` AND a.user_id = $${paramIndex}`;
+      query += condition;
+      countQuery += condition;
       params.push(userId);
+      paramIndex++;
     } else if (type === "collected") {
-      query += " AND a.collected_by = $1";
+      const condition = ` AND a.collected_by = $${paramIndex} AND a.collected_at IS NOT NULL`;
+      query += condition;
+      countQuery += condition;
       params.push(userId);
+      paramIndex++;
     } else {
-      query += " AND (a.user_id = $1 OR a.collected_by = $1)";
+      // all
+      const condition = ` AND (a.user_id = $${paramIndex} OR a.collected_by = $${paramIndex})`;
+      query += condition;
+      countQuery += condition;
       params.push(userId);
+      paramIndex++;
     }
 
-    query += " ORDER BY a.created_at DESC LIMIT 100";
+    // Add ordering and pagination to main query
+    query += ` ORDER BY 
+      CASE 
+        WHEN a.collected_at IS NOT NULL THEN a.collected_at 
+        ELSE a.created_at 
+      END DESC
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
 
-    const result = await db.queryObject<Artwork & { username: string }>(
-      query,
-      params
-    );
+    params.push(limit, offset);
 
-    return result.rows.map((row) => ({
-      ...row,
-      time_remaining: Math.max(0, Math.floor(row.time_remaining || 0)),
-    }));
+    try {
+      // Execute both queries
+      const [artworkResult, countResult] = await Promise.all([
+        db.queryObject<Artwork & { username: string }>(query, params),
+        db.queryObject<{ total: number }>(countQuery, params.slice(0, -2)), // Remove limit/offset for count
+      ]);
+
+      const artworks = artworkResult.rows;
+
+      const total = parseInt(countResult.rows[0]?.total?.toString() || "0");
+
+      return { artworks, total };
+    } catch (error) {
+      console.error("Error fetching user artworks:", error);
+      throw new Error("Failed to fetch artworks");
+    }
   }
 
   private static validatePixelData(pixelData: string, resolution: number) {

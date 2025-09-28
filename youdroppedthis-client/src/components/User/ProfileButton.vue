@@ -1,7 +1,7 @@
 <template>
   <template v-if="authStore.isAuthenticated">
     <div class="relative">
-      <button class="peer rounded-full bg-green-800 size-8 text-2xl text-white cursor-pointer">
+      <button class="peer rounded-full bg-teal-800 size-8 text-2xl text-white cursor-pointer">
         {{ authStore.user?.username.charAt(0) }}
       </button>
       <div
@@ -26,7 +26,7 @@
   <template v-else>
     <button
       @click="openAuthModal('login')"
-      class="text-blue-600 hover:text-blue-800 transition-colors"
+      class="text-teal-500 border-2 border-current cursor-pointer font-semibold px-2 py-1 rounded-md bg-black/50 backdrop-blur-xl"
     >
       Sign in
     </button>
@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/User/Auth.vue'
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import UserProfile from '@/components/User/UserProfile.vue'
 
 const authStore = useAuthStore()
@@ -51,21 +51,6 @@ const showAuthModal = ref(false)
 const authModalMode = ref<'login' | 'register'>('login')
 const showUserProfile = ref(false)
 
-onMounted(async () => {
-  // Try to load user if token exists
-  await authStore.loadUser()
-
-  // Start WebSocket connection if authenticated
-  if (authStore.isAuthenticated) {
-    // canvasStore.startWebSocketConnection()
-  }
-})
-
-function logout() {
-  authStore.logout()
-  // canvasStore.stopWebSocketConnection()
-  // router.push('/login')
-}
 function openAuthModal(mode: 'login' | 'register') {
   authModalMode.value = mode
   showAuthModal.value = true

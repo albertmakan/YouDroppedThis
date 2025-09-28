@@ -48,10 +48,17 @@ artworkRouter.get("/mine", async (ctx) => {
   try {
     const userId = parseInt(ctx.state.user.sub);
     const type = ctx.request.url.searchParams.get("type") || "all"; // "placed", "collected", "all"
+    const limit = parseInt(ctx.request.url.searchParams.get("limit") || "12");
+    const page = parseInt(ctx.request.url.searchParams.get("page") || "0");
 
-    const artworks = await ArtworkService.getUserArtworks(userId, type as any);
+    const artworks = await ArtworkService.getUserArtworks(
+      userId,
+      type as any,
+      page,
+      limit
+    );
 
-    ctx.response.body = { artworks };
+    ctx.response.body = artworks;
   } catch (error) {
     ctx.response.status = 500;
     ctx.response.body = { error: "Failed to get canvas state" };

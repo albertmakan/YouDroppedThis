@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import type { User, AuthResponse } from '@/shared/types'
-import { artworkApi, authApi } from '@/services/api'
+import { authApi } from '@/services/api'
+import { isAxiosError } from 'axios'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -18,7 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.login(username, password)
       setAuth(response)
     } catch (err: any) {
-      error.value = err.message
+      error.value = isAxiosError(err) ? err.response?.data.error : err.message
     } finally {
       isLoading.value = false
       return !error.value
@@ -32,7 +33,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.register(username, email, password)
       setAuth(response)
     } catch (err: any) {
-      error.value = err.message
+      error.value = isAxiosError(err) ? err.response?.data.error : err.message
     } finally {
       isLoading.value = false
       return !error.value
@@ -62,15 +63,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function loadUserArtworks(): Promise<void> {
-    if (user.value) {
-      try {
-        const { artworks } = await artworkApi.getUserArtworks()
-        user.value.artworks = artworks
-      } catch (error) {}
-    }
-  }
-
   function updateBalance(newBalance: number) {
     if (user.value) {
       user.value.balance = newBalance
@@ -91,6 +83,5 @@ export const useAuthStore = defineStore('auth', () => {
     clearError: () => {
       error.value = null
     },
-    loadUserArtworks,
   }
 })

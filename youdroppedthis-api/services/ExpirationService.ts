@@ -24,8 +24,12 @@ export class ExpirationService {
 
     try {
       // Find expired artworks
-      const expiredResult = await db.queryObject<{ id: number }>(
-        "SELECT id FROM artworks WHERE expires_at <= NOW() AND is_expired = FALSE AND collected_by IS NULL"
+      const expiredResult = await db.queryObject<{
+        id: number;
+        x: number;
+        y: number;
+      }>(
+        "SELECT id, x, y FROM artworks WHERE expires_at <= NOW() AND is_expired = FALSE AND collected_by IS NULL"
       );
 
       if (expiredResult.rows.length > 0) {
@@ -40,7 +44,7 @@ export class ExpirationService {
         // Notify connected clients
         WebSocketService.broadcast({
           type: "artwork_expired",
-          data: { expiredIds },
+          data: { expired: expiredResult.rows },
         });
 
         console.log(`🗑️ Cleaned up ${expiredIds.length} expired artworks`);
