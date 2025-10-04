@@ -2,11 +2,11 @@
   <div class="fixed inset-0 flex items-center z-50 bg-black/50">
     <div class="max-h-screen overflow-y-auto w-full">
       <div
-        class="bg-neutral-800 text-neutral-200 rounded-lg shadow-lg flex flex-col gap-4 items-center m-auto my-4 p-4 pt-0 w-fit"
+        class="bg-neutral-800 text-neutral-200 rounded-lg shadow-lg flex flex-col gap-4 items-center m-auto my-4 p-4 w-fit"
         @click.stop
       >
-        <div class="text-right text-2xl w-full">
-          <button @click="closeModal" class="cursor-pointer">&times;</button>
+        <div class="flex w-full justify-end text-2xl">
+          <button @click="closeModal" class="cursor-pointer size-6"><XMarkIcon /></button>
         </div>
         <label>
           Resolution:
@@ -65,12 +65,12 @@
             :class="[
               'size-8 p-1 rounded-md cursor-pointer',
               {
-                'bg-neutral-700 hover:bg-neutral-600 text-neutral-200': editorStore.tool !== 'fill',
-                'bg-neutral-200 text-neutral-700': editorStore.tool === 'fill',
+                'bg-neutral-700 hover:bg-neutral-600 text-neutral-200': editorStore.tool !== 'code',
+                'bg-neutral-200 text-neutral-700': editorStore.tool === 'code',
               },
             ]"
-            @click="editorStore.tool = 'fill'"
-            title="Fill"
+            @click="editorStore.tool = 'code'"
+            title="Expression"
           >
             <SparkleIcon />
           </button>
@@ -113,7 +113,7 @@
           </label>
         </div>
         <canvas
-          ref="pixelCanvas"
+          ref="pixel-canvas"
           :width="320"
           :height="320"
           @mousedown="startDrawing"
@@ -126,7 +126,29 @@
           @touchcancel.prevent="stopDrawing"
           @contextmenu.prevent
         />
-        <div class="flex gap-2 flex-wrap w-64">
+        <div v-if="editorStore.tool === 'code'" class="w-full">
+          <div class="flex justify-between p-1 font-semibold">
+            <label for="expression-field">pixel(x,y) :=</label>
+            <button
+              @click="applyExpression"
+              :disabled="!expr"
+              class="cursor-pointer bg-neutral-700 hover:bg-neutral-600 py-1 px-2 text-xs rounded-md disabled:opacity-50 inline-flex gap-1"
+            >
+              <span class="size-4"><CheckmarkIcon /></span>
+              Apply
+            </button>
+          </div>
+          <div class="">
+            <ExpressionEditor
+              id="expression-field"
+              :text="expr"
+              @change="(newExpr) => (expr = newExpr)"
+              :context="editorStore.context"
+              placeholder="Type expression"
+            />
+          </div>
+        </div>
+        <div v-else class="flex gap-2 flex-wrap w-64">
           <div class="h-6 w-14">
             <input
               v-model="editorStore.selectedColor"
@@ -148,7 +170,8 @@
         </div>
         <button
           @click="done"
-          class="text-xl border-current border-2 text-neutral-200 rounded-md px-2 py-1 hover:bg-neutral-700 cursor-pointer"
+          :disabled="editorStore.tool === 'code'"
+          class="text-xl border-current border-2 disabled:opacity-50 text-neutral-200 rounded-md px-2 py-1 hover:bg-neutral-700 cursor-pointer"
         >
           Done
         </button>
@@ -159,8 +182,8 @@
 
 <script setup lang="ts">
 import { useEditorStore } from '@/stores/editor'
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
-import DrawIcon from '@/components/Icons/DrawIcon.vue'
+import { ref, onMounted, watch, computed, useTemplateRef } from 'vue'
+import DrawIcon from '../Icons/DrawIcon.vue'
 import FillIcon from '../Icons/FillIcon.vue'
 import EraseIcon from '../Icons/EraseIcon.vue'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
@@ -169,8 +192,10 @@ import RedoIcon from '../Icons/RedoIcon.vue'
 import GridIcon from '../Icons/GridIcon.vue'
 import SparkleIcon from '../Icons/SparkleIcon.vue'
 import { useCanvasStore } from '@/stores/canvas'
+import ExpressionEditor from '../Editor/ExpressionEditor.vue'
+import CheckmarkIcon from '../Icons/CheckmarkIcon.vue'
 
-const pixelCanvas = ref<HTMLCanvasElement>()
+const pixelCanvas = useTemplateRef<HTMLCanvasElement>('pixel-canvas')
 
 const editorStore = useEditorStore()
 const canvasStore = useCanvasStore()
@@ -193,6 +218,8 @@ const showGrid = ref(true)
 // Drawing state
 const isDrawing = ref(false)
 const pixelSize = computed(() => 320 / editorStore.resolution)
+
+const expr = ref('')
 
 editorStore.$subscribe((mutation, state) => {
   drawCanvas()
@@ -271,7 +298,12 @@ function clearCanvas() {
   editorStore.saveState()
 }
 
-watch([showGrid], () => {
+function applyExpression() {
+  editorStore.applyFunction(expr.value)
+  editorStore.saveState()
+}
+
+watch(showGrid, () => {
   drawCanvas()
 })
 </script>

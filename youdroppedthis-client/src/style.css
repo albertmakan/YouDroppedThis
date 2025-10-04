@@ -1,5 +1,24 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-primary: var(--color-teal-500);
+  --color-code-editor: var(--color-neutral-700);
+  --color-code-num: var(--color-lime-300);
+  --color-code-str: var(--color-green-500);
+  --color-code-bool: var(--color-blue-500);
+  --color-code-var: var(--color-sky-300);
+  --color-code-var-bg: var(--color-sky-950);
+  --color-code-fun: var(--color-violet-300);
+  --color-code-fun-bg: var(--color-violet-950);
+  --color-code-warn: var(--color-orange-300);
+  --color-code-warn-bg: var(--color-orange-950);
+  --color-code-error: var(--color-red-500);
+  --color-code-operator: var(--color-white);
+  --color-code-bracket-1: var(--color-fuchsia-400);
+  --color-code-bracket-2: var(--color-blue-500);
+  --color-code-bracket-3: var(--color-yellow-400);
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;

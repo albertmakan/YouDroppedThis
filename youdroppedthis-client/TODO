@@ -16,15 +16,16 @@
 - view profile (collection, stats)
 - jump to coordinate
 - lazy loading (calculate chunk IDs from vx,vy,w,h,zoom)
+- expression in editor
 
+- disappear animation
+- buying coins
+- show adjacent artworks in editor (using scroll and pinch)
 - canvas texture ~
 - Multi-Level Caching
-- expression in editor 
-- show adjacent artworks in editor (using scroll and pinch)
 - notifications
-- disappear animation
 - define economy
-- buying coins
 - daily themes
 - saving coordinates
+- collectible after time
 - deploy on cloud
