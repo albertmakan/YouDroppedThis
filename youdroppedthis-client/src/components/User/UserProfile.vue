@@ -100,7 +100,7 @@
                     {{ getArtworkStatus(artwork) }}
                   </span>
                   <span v-else class="px-2 py-0.5 bg-neutral-600/50 rounded-lg">
-                    Collected {{ formatDate(artwork.collected_at) }}
+                    Collected {{ formatRelativeTime(artwork.collected_at) }}
                   </span>
                 </div>
               </div>
@@ -135,7 +135,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import ArtworkThumbnail from '../Artwork/ArtworkThumbnail.vue'
 import type { Artwork } from '@/shared/types'
-import { formatDate } from '@/utils/date'
+import { formatRelativeTime, getH_M_S } from '@/utils/date'
 import { useRouter } from 'vue-router'
 import { artworkApi } from '@/services/api'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
@@ -234,10 +234,9 @@ function getArtworkStatus(artwork: Artwork): string {
   if (artwork.collected_by) {
     return 'Collected'
   }
-  const timeRemaining = (new Date(artwork.expires_at).getTime() - new Date().getTime()) / 1000
+  const timeRemaining = new Date(artwork.expires_at).getTime() - Date.now()
   if (timeRemaining > 0) {
-    const hours = Math.floor(timeRemaining / 3600)
-    const minutes = Math.floor((timeRemaining % 3600) / 60)
+    const { hours, minutes } = getH_M_S(timeRemaining)
     return (hours > 0 ? `${hours}h ` : '') + `${minutes}m left`
   }
   return 'Expired'

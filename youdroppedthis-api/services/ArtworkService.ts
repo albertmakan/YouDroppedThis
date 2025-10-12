@@ -57,8 +57,8 @@ export class ArtworkService {
 
       // Create artwork
       const artworkResult = await db.queryObject<Artwork>(
-        `INSERT INTO artworks (user_id, x, y, width, height, resolution, pixel_data, expires_at)
-         VALUES ($1, $2, $3, 64, 64, $4, $5, NOW() + INTERVAL '1 day')
+        `INSERT INTO artworks (user_id, x, y, resolution, pixel_data, expires_at)
+         VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 day')
          RETURNING *`,
         [
           userId,

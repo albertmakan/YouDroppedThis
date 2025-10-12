@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { shallowRef } from 'vue'
+import { ref, shallowRef } from 'vue'
 import type { Artwork, WebSocketMessage } from '@/shared/types'
-import { canvasApi } from '@/services/api'
+import { canvasApi, parsePixelData } from '@/services/api'
 import { useWebSocket } from '@/services/websocket'
 
 export const CANVAS_SIZE = 1024
@@ -13,12 +13,15 @@ export const MAX_ZOOM = 10
 export const useCanvasStore = defineStore('canvas', () => {
   const canvasChunks = shallowRef<{ arts?: Artwork[]; isLoading: boolean }[][]>([])
 
+  const callbacks = ref<{
+    onArtworkPlaced?: (artwork: Artwork) => void
+  }>({})
+
   const { connect, disconnect, send } = useWebSocket()
 
   async function loadChunk(cx: number, cy: number, zoom: number) {
     if (!canvasChunks.value[cy]) canvasChunks.value[cy] = []
     canvasChunks.value[cy][cx] = { isLoading: true }
-    // triggerRef(canvasChunks)
     try {
       const response = await canvasApi.getArtworksInArea(
         cx * CHUNK_SIZE,
@@ -27,7 +30,6 @@ export const useCanvasStore = defineStore('canvas', () => {
         (cy + 1) * CHUNK_SIZE,
       )
       canvasChunks.value[cy][cx] = { arts: response.artworks, isLoading: false }
-      // triggerRef(canvasChunks)
     } catch (error) {
       console.error('Failed to load chunk:', error)
     }
@@ -38,9 +40,11 @@ export const useCanvasStore = defineStore('canvas', () => {
     switch (message.type) {
       case 'artwork_placed': {
         const artwork = message.data
+        artwork.pixels = parsePixelData(artwork.pixel_data)
         const cx = Math.floor(artwork.x / CHUNK_SIZE)
         const cy = Math.floor(artwork.y / CHUNK_SIZE)
         canvasChunks.value[cy]?.[cx]?.arts?.push(artwork)
+        callbacks.value.onArtworkPlaced?.(artwork)
         break
       }
       case 'artwork_collected': {
@@ -51,6 +55,7 @@ export const useCanvasStore = defineStore('canvas', () => {
         if (collected) {
           collected.collected_by = message.data.collectorId
           collected.collected_at = new Date().toISOString()
+          collected.collectionEffect = { progress: 0 }
         }
         break
       }
@@ -61,6 +66,7 @@ export const useCanvasStore = defineStore('canvas', () => {
           const expired = canvasChunks.value[cy]?.[cx]?.arts?.find((a) => a.id === id)
           if (expired) {
             expired.is_expired = true
+            expired.particles = initializeDisintegrationParticles(expired)
           }
         })
         break
@@ -71,14 +77,16 @@ export const useCanvasStore = defineStore('canvas', () => {
   function getArtworkAt(x: number, y: number) {
     const cx = Math.floor(x / CHUNK_SIZE)
     const cy = Math.floor(y / CHUNK_SIZE)
+    const artworksInChunk = canvasChunks.value[cy]?.[cx]?.arts
+    if (!artworksInChunk) return
     return (
-      canvasChunks.value[cy]?.[cx]?.arts?.find((artwork) => x === artwork.x && y === artwork.y) ||
+      artworksInChunk.find((a) => x === a.x && y === a.y && !a.is_expired && !a.collected_by) ||
       null
     )
   }
 
   function startWebSocketConnection() {
-    connect('ws://192.168.0.106:8000/ws', handleWebSocketMessage)
+    connect(handleWebSocketMessage)
   }
 
   function stopWebSocketConnection() {
@@ -91,5 +99,28 @@ export const useCanvasStore = defineStore('canvas', () => {
     getArtworkAt,
     startWebSocketConnection,
     stopWebSocketConnection,
+    callbacks,
   }
 })
+
+function initializeDisintegrationParticles(artwork: Artwork) {
+  const particles = []
+  for (let pixelY = 0; pixelY < artwork.resolution; pixelY++) {
+    for (let pixelX = 0; pixelX < artwork.resolution; pixelX++) {
+      const color = artwork.pixels?.[pixelY]?.[pixelX]
+      if (!color) continue
+      const spreadAngle = Math.random() * Math.PI * 2
+      const spreadSpeed = Math.random()
+      particles.push({
+        x: pixelX,
+        y: pixelY,
+        color,
+        vx: Math.cos(spreadAngle) * spreadSpeed,
+        vy: Math.sin(spreadAngle) * spreadSpeed - 0.5, // Slight upward bias
+        life: 1.0,
+        size: 1,
+      })
+    }
+  }
+  return particles
+}

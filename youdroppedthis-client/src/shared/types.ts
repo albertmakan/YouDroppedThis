@@ -1,3 +1,5 @@
+import type { Effect, Particle } from '@/utils/physics'
+
 export interface User {
   id: number
   username: string
@@ -21,6 +23,9 @@ export interface Artwork {
   collected_by?: number
   collected_at?: string
   is_expired: boolean
+
+  particles?: Particle[]
+  collectionEffect?: Effect
 }
 
 export interface Transaction {
@@ -36,7 +41,7 @@ export interface Transaction {
 export interface PlacementRequest {
   x: number
   y: number
-  resolution: 16 | 32 | 64
+  resolution: number
   pixel_data: string
 }
 
@@ -72,27 +77,3 @@ export interface AuthResponse {
 export interface ApiError {
   error: string
 }
-
-// Color palette for pixel art
-export const DEFAULT_PALETTE = [
-  '#000000',
-  '#FFFFFF',
-  '#FF0000',
-  '#00FF00',
-  '#0000FF',
-  '#FFFF00',
-  '#FF00FF',
-  '#00FFFF',
-  '#808080',
-  '#800000',
-  '#808000',
-  '#008000',
-  '#800080',
-  '#008080',
-  '#000080',
-  '#FFA500',
-  '#FFC0CB',
-  '#A52A2A',
-  '#FFFFE0',
-  '#ADD8E6',
-]

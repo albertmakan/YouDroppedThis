@@ -1,4 +1,4 @@
-export function formatDate(dateString?: string): string {
+export function formatRelativeTime(dateString?: string) {
   if (!dateString) return ''
   const date = new Date(dateString)
   const now = new Date()
@@ -16,12 +16,9 @@ export function formatDate(dateString?: string): string {
   return `${Math.floor(diffDays / 30)} months ago`
 }
 
-export function formatTimeRemaining(seconds: number): string {
-  if (seconds <= 0) return 'Expired'
-
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+export function getH_M_S(milliseconds: number) {
+  const hours = Math.floor(milliseconds / 3_600_000)
+  const minutes = Math.floor((milliseconds % 3_600_000) / 60_000)
+  const seconds = Math.floor((milliseconds % 60_000) / 1_000)
+  return { hours, minutes, seconds }
 }

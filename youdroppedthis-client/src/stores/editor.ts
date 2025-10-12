@@ -1,15 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
-import { DEFAULT_PALETTE } from '@/shared/types'
 import { solvePostfix, tokenize, tokensToPostfix } from '@/utils/parser'
 
+// Color palette for pixel art
+export const DEFAULT_PALETTE = [
+  '#000000',
+  '#FFFFFF',
+  '#FF0000',
+  '#00FF00',
+  '#0000FF',
+  '#FFFF00',
+  '#FF00FF',
+  '#00FFFF',
+  '#808080',
+  '#800000',
+  '#808000',
+  '#008000',
+  '#800080',
+  '#008080',
+  '#000080',
+  '#FFA500',
+  '#FFC0CB',
+  '#A52A2A',
+  '#FFFFE0',
+  '#ADD8E6',
+]
 const emptyPixel = ''
 
 export const useEditorStore = defineStore('editor', () => {
   const isOpen = ref(false)
+  const location = ref<{ x: number; y: number } | null>(null)
   const selectedColor = ref('#ffffff')
   const pixels = ref(Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => emptyPixel)))
-  const tool = ref<'pen' | 'eraser' | 'fill' | 'code'>('pen')
+  const tool = ref<'pen' | 'eraser' | 'fill' | 'code' | null>('pen')
+  const expression = ref('')
   const palette = ref(DEFAULT_PALETTE)
 
   const history = ref<{ pixels: string[][] }[]>([{ pixels: pixels.value.map((row) => [...row]) }])
@@ -102,8 +126,8 @@ export const useEditorStore = defineStore('editor', () => {
     )
   }
 
-  function applyFunction(expr: string) {
-    const { tokens, errorFound } = tokenize(expr)
+  function applyFunction() {
+    const { tokens, errorFound } = tokenize(expression.value)
     if (errorFound) return
     const postfix = tokensToPostfix(tokens)
     const newPixels = pixels.value.map((r) => [...r])
@@ -116,15 +140,6 @@ export const useEditorStore = defineStore('editor', () => {
       }
     }
     pixels.value = newPixels
-  }
-
-  function openEditor() {
-    isOpen.value = true
-  }
-
-  function closeEditor(clear?: boolean) {
-    isOpen.value = false
-    if (clear) clearCanvas()
   }
 
   function getPixelData() {
@@ -143,18 +158,18 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   return {
-    isOpen: readonly(isOpen),
+    isOpen,
+    location,
     resolution,
     selectedColor,
     pixels,
     tool,
+    expression,
     palette,
     context: readonly(context),
     setPixel,
     clearCanvas,
     applyFunction,
-    openEditor,
-    closeEditor,
     getPixelData,
     loadPixelData,
     saveState,

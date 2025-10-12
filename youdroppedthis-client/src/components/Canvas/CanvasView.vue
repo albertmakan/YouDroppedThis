@@ -1,17 +1,20 @@
 <template>
   <div class="w-full h-screen overflow-hidden">
     <div
-      class="fixed top-0 left-0 rounded-br-md backdrop-blur-xl text-[#14B8A6] bg-black/50 p-2 z-10 font-bold"
+      class="fixed top-0 left-0 rounded-br-md backdrop-blur-xl text-primary bg-black/50 p-2 z-10 font-bold"
     >
       YouDroppedThis
     </div>
 
-    <div class="fixed top-0 right-0 p-2 z-10">
+    <div class="fixed top-0 right-0 p-2 z-20">
       <ProfileButton />
     </div>
 
-    <div class="fixed bottom-0 left-0 p-2 z-10">
-      <div class="text-xs font-mono backdrop-blur-xl text-neutral-200 bg-black/50 p-1 rounded-md">
+    <div class="fixed bottom-0 left-0 p-2 z-10 font-mono">
+      <div
+        v-if="showInfo"
+        class="text-xs backdrop-blur-xl text-neutral-200 bg-black/50 p-1 rounded-md"
+      >
         <div>
           Canvas coords: ({{ Math.floor(viewX / zoomedArtSize) }},
           {{ Math.floor(viewY / zoomedArtSize) }})
@@ -20,55 +23,52 @@
           W: {{ (viewportWidth / zoomedArtSize).toFixed(1) }}, H:
           {{ (viewportHeight / zoomedArtSize).toFixed(1) }}
         </div>
-        <div>Visible artworks: //todo</div>
+        <div>Visible artworks: {{ visibleArtworks }}</div>
         <div>Chunks: {{ (chunks.cx2 - chunks.cx1 + 1) * (chunks.cy2 - chunks.cy1 + 1) }}</div>
+        <div>
+          Zoom: {{ Math.round(zoom * 100) }}%
+          <button @click="resetZoom" class="cursor-pointer hover:underline">Reset</button>
+        </div>
       </div>
       <button
-        class="rounded-full border border-current size-6 backdrop-blur-xl text-neutral-200 bg-black/50 font-mono"
+        @click="showInfo = !showInfo"
+        class="rounded-full border border-current size-6 backdrop-blur-xl text-neutral-200 bg-black/50 cursor-pointer"
       >
         i
-      </button>
-      <button
-        class="text-xs backdrop-blur-xl text-neutral-200 font-semibold bg-black/50 rounded-md px-1"
-        @click="resetZoom"
-      >
-        Zoom: {{ Math.round(zoom * 100) }}%
       </button>
     </div>
 
     <div v-if="authStore.isAuthenticated" class="fixed bottom-0 right-0 p-2 z-20">
       <button
-        @click="togglePlacementMode"
-        :disabled="(authStore.user?.balance || 0) < -10"
-        class="size-10 hover:scale-110 relative rounded-md border-2 border-dashed border-current backdrop-blur-xl text-neutral-200 bg-black/50 cursor-pointer disabled:opacity-50"
-        :class="{}"
+        v-if="
+          (!editorStore.isOpen || !editorRelativeLocation || editorLocationTaken) &&
+          editorStore.location
+        "
+        @click="reopenEditor"
+        class="group relative size-16 hover:scale-110 rounded-md border-2 border-dashed border-neutral-200 cursor-pointer"
       >
-        <div class="inset-0 absolute opacity-60">
-          <ArtworkThumbnail
-            v-if="!editorStore.isOpen"
-            :artwork="{
-              pixels: editorStore.pixels,
-              resolution: editorStore.resolution as any,
-              created_at: '',
-              expires_at: '',
-              id: 0,
-              is_expired: false,
-              pixel_data: '',
-              user_id: 0,
-              ...selectedLocation,
-            }"
-          />
-        </div>
-        <div class="inset-0 absolute">
-          <XMarkIcon v-if="placementMode" />
-          <PlusIcon v-else />
-        </div>
+        <ArtworkThumbnail
+          :artwork="{
+            pixels: editorStore.pixels,
+            resolution: editorStore.resolution as any,
+            created_at: '',
+            expires_at: '',
+            id: 0,
+            is_expired: false,
+            pixel_data: '',
+            user_id: 0,
+            ...editorStore.location,
+          }"
+        />
+        <template v-if="editorLocationTaken">
+          <div class="absolute -top-2 -left-2 rounded-full bg-code-warn size-4" />
+          <div
+            class="absolute bottom-full mb-2 -left-1/2 group-focus:block hidden text-xs font-mono p-1 backdrop-blur-xl bg-black/50 text-code-warn rounded-md"
+          >
+            Select another location, current one is taken
+          </div>
+        </template>
       </button>
-      <PixelArtEditorPopup
-        v-if="editorStore.isOpen"
-        @close="editorStore.closeEditor"
-        @success="placeArtwork"
-      />
     </div>
 
     <canvas
@@ -84,52 +84,42 @@
       @touchmove.prevent="handleTouchMove"
       @touchend="handleTouchEnd"
       @contextmenu.prevent="handleContextMenu"
-      @click="handleClick"
-      @dblclick="handleContextMenu"
-      :class="{
-        'cursor-grabbing': isDragging,
-        'cursor-crosshair': placementMode,
-        'cursor-grab': !placementMode,
-      }"
+      @click.prevent
+      @dblclick.prevent
+      @keydown="handleArrows"
+      tabindex="0"
+      :class="{ 'cursor-grabbing': isDragging, 'cursor-grab': !isDragging }"
     />
-
     <div
-      v-if="placementPreview"
+      v-if="locationPreview && !selectedLocation?.artwork"
       class="fixed pointer-events-none border-2 border-current border-dashed text-neutral-200"
       :style="{
-        left: `${placementPreview.x}px`,
-        top: `${placementPreview.y}px`,
+        left: `${locationPreview.x}px`,
+        top: `${locationPreview.y}px`,
         width: `${zoomedArtSize}px`,
         height: `${zoomedArtSize}px`,
       }"
     >
-      <div class="relative h-full">
-        <div
-          class="absolute bottom-full min-w-full flex gap-4 justify-between mb-0.5 pointer-events-auto bg-neutral-800/90 backdrop-blur-sm rounded-md rounded-bl-none p-2"
-          @touchmove.prevent
-        >
-          <span class="font-semibold">{{ selectedArtwork?.username }}</span>
-          <div
-            class="size-5 text-neutral-700"
-            :title="'Expires at ' + new Date(selectedArtwork!.expires_at)"
-          >
-            <TimeRemainingIcon :remaining="Math.max(placementPreview.t, 0)" />
-          </div>
-        </div>
-        <div
-          class="absolute top-full min-w-full mt-0.5 bg-neutral-800/90 backdrop-blur-sm rounded-md rounded-tl-none p-1 flex justify-between"
-        >
-          <button
-            @click="collectArtwork"
-            @touchmove.prevent
-            class="cursor-pointer pointer-events-auto size-8"
-            title="Collect"
-          >
-            <CollectIcon />
-          </button>
-        </div>
-      </div>
+      <button @click="openEditorAtNewLocation" class="pointer-events-auto cursor-pointer size-1/2">
+        <DrawIcon />
+      </button>
     </div>
+    <ArtworkInfoPopup
+      v-if="locationPreview && selectedLocation?.artwork"
+      :artwork="selectedLocation.artwork"
+      :top="locationPreview.y"
+      :left="locationPreview.x"
+      :size="zoomedArtSize"
+    />
+    <PixelArtEditorPopup
+      v-if="editorStore.isOpen && editorRelativeLocation && !editorLocationTaken"
+      @close="editorStore.isOpen = false"
+      @done="placeArtwork"
+      :top="editorRelativeLocation.y"
+      :left="editorRelativeLocation.x"
+      :size="zoomedArtSize"
+      @wheel="handleWheel"
+    />
   </div>
 </template>
 
@@ -149,12 +139,13 @@ import { artworkApi } from '@/services/api'
 import type { Artwork } from '@/shared/types'
 import ProfileButton from '@/components/User/ProfileButton.vue'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
-import XMarkIcon from '@/components/Icons/XMarkIcon.vue'
 import PlusIcon from '@/components/Icons/PlusIcon.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
-import TimeRemainingIcon from '../Icons/TimeRemainingIcon.vue'
-import CollectIcon from '../Icons/CollectIcon.vue'
 import { useRoute } from 'vue-router'
+import { updateEffect, updateParticles } from '@/utils/physics'
+import { renderArtwork, renderParticles } from '../Artwork/renderArtwork'
+import ArtworkInfoPopup from '../Artwork/ArtworkInfoPopup.vue'
+import DrawIcon from '../Icons/DrawIcon.vue'
 
 const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
@@ -176,24 +167,22 @@ const zoomedArtSize = computed(() => ART_SIZE * zoom.value)
 const zoomedChunkSize = computed(() => zoomedArtSize.value * CHUNK_SIZE)
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
-const selectedLocation = ref({ x: 0, y: 0 })
 const initialPinchDistance = ref<number | null>(null)
+const showInfo = ref(false)
+const editorLocationTaken = ref(false)
 
-// Art state
-const selectedArt = ref<{ x: number; y: number } | null>(null)
-const placementMode = ref(false)
-
-const selectedArtwork = ref<Artwork | null>(null)
-const placementPreview = computed(() => {
-  if (!selectedArtwork.value) return null
-  const expirationTime = new Date(selectedArtwork.value.expires_at).getTime()
-  return {
-    x: selectedArtwork.value.x * zoomedArtSize.value - viewX.value,
-    y: selectedArtwork.value.y * zoomedArtSize.value - viewY.value,
-    t:
-      (expirationTime - Date.now()) /
-      (expirationTime - new Date(selectedArtwork.value.created_at).getTime()),
-  }
+// Selection state
+const selectedLocation = ref<{ x: number; y: number; artwork: Artwork | null } | null>(null)
+const locationPreview = computed(
+  () => selectedLocation.value && getArtworkRelativeCoordinates(selectedLocation.value),
+)
+const editorRelativeLocation = computed(() => {
+  const rl =
+    editorStore.location &&
+    (isOutsideViewport(editorStore.location.x, editorStore.location.y)
+      ? null
+      : getArtworkRelativeCoordinates(editorStore.location))
+  return rl
 })
 
 watch(
@@ -233,13 +222,18 @@ function getCanvasCoordinates(clientX: number, clientY: number) {
   return { x: Math.floor(x), y: Math.floor(y) }
 }
 
-function setLocation(x: number, y: number) {
-  if (x) {
-    viewX.value = x * zoomedArtSize.value
+function getArtworkRelativeCoordinates(artwork: { x: number; y: number }) {
+  return {
+    x: artwork.x * zoomedArtSize.value - viewX.value,
+    y: artwork.y * zoomedArtSize.value - viewY.value,
   }
-  if (y) {
-    viewY.value = y * zoomedArtSize.value
-  }
+}
+
+function setLocation(x: number, y: number, center = false) {
+  viewX.value =
+    x * zoomedArtSize.value - (center ? (viewportWidth.value - zoomedArtSize.value) / 2 : 0)
+  viewY.value =
+    y * zoomedArtSize.value - (center ? (viewportHeight.value - zoomedArtSize.value) / 2 : 0)
 }
 
 function getEventLocation(e: MouseEvent | TouchEvent) {
@@ -247,23 +241,49 @@ function getEventLocation(e: MouseEvent | TouchEvent) {
   return { x: e.clientX, y: e.clientY }
 }
 
-async function openEditor(x: number, y: number) {
-  selectedLocation.value = { x, y }
-  editorStore.openEditor()
+function isOutsideViewport(x: number, y: number) {
+  return (
+    x < Math.floor(viewX.value / zoomedArtSize.value) ||
+    x > Math.floor((viewX.value + viewportWidth.value) / zoomedArtSize.value) ||
+    y < Math.floor(viewY.value / zoomedArtSize.value) ||
+    y > Math.floor((viewY.value + viewportHeight.value) / zoomedArtSize.value)
+  )
 }
 
-async function placeArtwork(pixelData: string, resolution: any) {
+function reopenEditor() {
+  if (!editorStore.location) {
+    return
+  }
+  editorStore.isOpen = true
+  const { x, y } = editorStore.location
+  if (isOutsideViewport(x, y)) setLocation(x, y, true)
+}
+
+function openEditorAtNewLocation() {
+  if (!selectedLocation.value || selectedLocation.value.artwork) return
+  editorStore.location = selectedLocation.value
+  editorLocationTaken.value = false
+  editorStore.isOpen = true
+  selectedLocation.value = null
+}
+
+async function placeArtwork() {
   if (!authStore.token) {
     alert('Please log in to place artwork')
     return
   }
+  if (!editorStore.location) {
+    return
+  }
   try {
     const response = await artworkApi.placeArtwork({
-      ...selectedLocation.value,
-      pixel_data: pixelData,
-      resolution,
+      pixel_data: editorStore.getPixelData(),
+      resolution: editorStore.resolution,
+      ...editorStore.location,
     })
-    editorStore.closeEditor(true)
+    editorStore.isOpen = false
+    editorStore.location = null
+    editorStore.clearCanvas()
     if (response) {
       console.log('Artwork placed successfully!')
     } else {
@@ -274,27 +294,8 @@ async function placeArtwork(pixelData: string, resolution: any) {
   }
 }
 
-async function collectArtwork() {
-  if (!authStore.token) {
-    alert('Please log in to collect artwork')
-    return
-  }
-  if (!selectedArtwork.value) return
-  try {
-    const response = await artworkApi.collectArtwork(selectedArtwork.value.id)
-
-    if (response) {
-      console.log('Artwork collected!')
-      selectedArtwork.value = null
-    } else {
-      alert('Failed to collect artwork')
-    }
-  } catch (error) {
-    console.error('Failed to collect artwork:', error)
-  }
-}
-
 // Canvas rendering
+let visibleArtworks = 0
 function renderCanvas() {
   if (!ctx.value || !canvasRef.value) return
   const canvas = canvasRef.value
@@ -304,7 +305,7 @@ function renderCanvas() {
   context.fillStyle = 'oklch(27.7% 0.046 192.524)'
   context.fillRect(0, 0, canvas.width, canvas.height)
 
-  // Draw grid (optional, for development)
+  // Draw grid
   if (zoom.value > 0.5) {
     context.strokeStyle = '#ffffff'
     context.lineWidth = 2
@@ -314,14 +315,15 @@ function renderCanvas() {
     for (let y = offsetY; y < canvas.height; y += gridSize) {
       for (let x = offsetX; x < canvas.width; x += gridSize) {
         context.beginPath()
-        context.moveTo(x, y)
-        context.lineTo(x + 2, y)
+        context.moveTo(x - 1, y)
+        context.lineTo(x + 1, y)
         context.stroke()
       }
     }
   }
 
   // Draw artworks
+  visibleArtworks = 0
   const { cx1, cx2, cy1, cy2 } = chunks.value
   for (let cx = cx1; cx <= cx2; cx++) {
     for (let cy = cy1; cy <= cy2; cy++) {
@@ -332,88 +334,64 @@ function renderCanvas() {
         const y = cy * zoomedChunkSize.value - viewY.value
         context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
       } else {
-        chunk?.arts?.forEach((artwork) => drawArtwork(artwork, context))
+        chunk?.arts?.forEach(
+          (artwork) => (visibleArtworks += drawArtwork(artwork, context) ? 1 : 0),
+        )
       }
     }
   }
-
-  // Draw placement preview
-  if (placementMode.value && selectedArt.value) {
-    const x = selectedArt.value.x * zoomedArtSize.value - viewX.value
-    const y = selectedArt.value.y * zoomedArtSize.value - viewY.value
-    const size = zoomedArtSize.value
-
-    context.strokeStyle = '#ffffff'
-    context.lineWidth = 2
-    context.setLineDash([5, 5])
-    context.strokeRect(x, y, size, size)
-    context.setLineDash([])
+  if (
+    selectedLocation.value?.artwork?.is_expired ||
+    selectedLocation.value?.artwork?.collected_by
+  ) {
+    selectedLocation.value.artwork = null
   }
 }
 
 function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D) {
-  if (artwork.is_expired || artwork.collected_by) {
-    return
+  if (isOutsideViewport(artwork.x, artwork.y)) {
+    return false
   }
-  const x = artwork.x * zoomedArtSize.value - viewX.value
-  const y = artwork.y * zoomedArtSize.value - viewY.value
-  const pixelSize = zoomedArtSize.value / artwork.resolution
-  // check if outside view
-  artwork.pixels ||= artwork.pixel_data.startsWith('[[') // in api?
-    ? JSON.parse(artwork.pixel_data)
-    : Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '#ff0000'))
+  const { x, y } = getArtworkRelativeCoordinates(artwork)
+  const resolution = artwork.resolution
+  const pixelSize = zoomedArtSize.value / resolution
 
-  for (let pixelY = 0; pixelY < artwork.resolution; pixelY++) {
-    for (let pixelX = 0; pixelX < artwork.resolution; pixelX++) {
-      context.fillStyle = artwork.pixels![pixelY][pixelX] || 'transparent'
-      context.fillRect(
-        x + pixelX * pixelSize,
-        y + pixelY * pixelSize,
-        pixelSize + (pixelX === artwork.resolution - 1 ? 0 : 1),
-        pixelSize + (pixelY === artwork.resolution - 1 ? 0 : 1),
-      )
-    }
+  if (artwork.is_expired) {
+    if (!artwork.particles?.length) return false
+    artwork.particles = updateParticles(artwork.particles, Date.now())
+    renderParticles(artwork.particles ?? [], context, x, y, pixelSize)
+    return true
   }
-}
-
-function handleContextMenu(event: MouseEvent) {
-  const { x, y } = getEventLocation(event)
-  const coords = getCanvasCoordinates(x, y)
-  const clickedArtwork = canvasStore.getArtworkAt(coords.x, coords.y)
-
-  if (clickedArtwork) {
-    if (selectedArtwork.value?.id === clickedArtwork.id) selectedArtwork.value = null
-    else selectedArtwork.value = clickedArtwork
+  if (artwork.collected_by) {
+    if (!artwork.collectionEffect) return false
+    artwork.collectionEffect = updateEffect(artwork.collectionEffect, Date.now()) || undefined
+    const remaining = (1 - (artwork.collectionEffect?.progress ?? 1)) * resolution
+    renderArtwork(artwork.pixels ?? [], context, x, y, resolution, remaining, pixelSize)
+    return true
   }
-}
-
-function handleClick(event: MouseEvent | TouchEvent) {
-  const { x, y } = getEventLocation(event)
-  const coords = getCanvasCoordinates(x, y)
-
-  if (placementMode.value) {
-    if (coords.x >= 0 && coords.y >= 0 && coords.x < CANVAS_SIZE && coords.y < CANVAS_SIZE) {
-      const occupied = canvasStore.getArtworkAt(coords.x, coords.y)
-      if (!occupied) {
-        openEditor(coords.x, coords.y)
-      } else {
-        alert('Position already occupied!')
-      }
-    }
-    placementMode.value = false
-    selectedArt.value = null
-  }
+  renderArtwork(artwork.pixels ?? [], context, x, y, resolution, resolution, pixelSize)
+  return true
 }
 
 // Event handlers
+function handleContextMenu(event: MouseEvent) {
+  const { x, y } = getEventLocation(event)
+  const coords = getCanvasCoordinates(x, y)
+  if (coords.x < 0 || coords.x >= CANVAS_SIZE || coords.y < 0 || coords.y >= CANVAS_SIZE) {
+    return
+  }
+  const clickedArtwork = canvasStore.getArtworkAt(coords.x, coords.y)
+  if (clickedArtwork === undefined) {
+    return
+  }
+  selectedLocation.value = { ...coords, artwork: clickedArtwork }
+}
+
 function handleMouseDown(event: MouseEvent | TouchEvent) {
   const { x, y } = getEventLocation(event)
-
-  if (!placementMode.value) {
-    isDragging.value = true
-    if (!canvasRef.value) return
-    dragStart.value = { x, y }
-  }
+  isDragging.value = true
+  if (!canvasRef.value) return
+  dragStart.value = { x, y }
 }
 
 function handleMouseMove(event: MouseEvent | TouchEvent) {
@@ -427,20 +405,9 @@ function handleMouseMove(event: MouseEvent | TouchEvent) {
     viewX.value -= deltaX
     viewY.value -= deltaY
 
-    // viewX.value = Math.max(
-    //   0,
-    //   Math.min(CANVAS_SIZE * zoom.value - VIEWPORT_WIDTH, viewX.value - deltaX),
-    // )
-    // viewY.value = Math.max(
-    //   0,
-    //   Math.min(CANVAS_SIZE * zoom.value - VIEWPORT_HEIGHT, viewY.value - deltaY),
-    // )
+    // out-of-bounds color
 
     dragStart.value = { x, y }
-  } else if (placementMode.value) {
-    // Update placement preview
-    const coords = getCanvasCoordinates(x, y)
-    selectedArt.value = coords
   }
 }
 
@@ -494,7 +461,13 @@ function resetZoom() {
 function handleTouchStart(e: TouchEvent) {
   if (e.touches.length === 1) {
     handleMouseDown(e)
-  } else if (e.type == 'touchmove' && e.touches.length === 2) {
+  }
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (e.touches.length === 1) {
+    handleMouseMove(e)
+  } else if (e.touches.length === 2) {
     isDragging.value = false
     handlePinch(e)
   }
@@ -503,28 +476,19 @@ function handleTouchStart(e: TouchEvent) {
 function handleTouchEnd(e: TouchEvent) {
   if (e.touches.length === 1) {
     handleMouseUp()
-  } else if (e.type == 'touchmove' && e.touches.length === 2) {
-    isDragging.value = false
-    handlePinch(e)
   }
 }
 
-function handleTouchMove(e: TouchEvent) {
-  if (e.touches.length === 1) {
-    handleMouseMove(e)
-  } else if (e.type == 'touchmove' && e.touches.length === 2) {
-    isDragging.value = false
-    handlePinch(e)
+function handleArrows(event: KeyboardEvent) {
+  if (event.key === 'ArrowUp') {
+    viewY.value -= zoomedArtSize.value
+  } else if (event.key === 'ArrowDown') {
+    viewY.value += zoomedArtSize.value
+  } else if (event.key === 'ArrowLeft') {
+    viewX.value -= zoomedArtSize.value
+  } else if (event.key === 'ArrowRight') {
+    viewX.value += zoomedArtSize.value
   }
-}
-
-// UI actions
-function togglePlacementMode() {
-  if ((authStore.user?.balance || 0) < -10) {
-    alert('Insufficient balance! You need 10 coins to place artwork.')
-    return
-  }
-  placementMode.value = !placementMode.value
 }
 
 // Animation loop
@@ -550,7 +514,14 @@ onMounted(() => {
   const { x, y } = route.query
   setLocation(+(x ?? 0), +(y ?? 0))
 
+  canvasStore.callbacks.onArtworkPlaced = (artwork) => {
+    if (editorStore.location?.x === artwork.x && editorStore.location.y === artwork.y) {
+      editorLocationTaken.value = true
+    }
+  }
+
   onUnmounted(() => {
+    canvasStore.callbacks.onArtworkPlaced = undefined
     if (animationFrame) {
       cancelAnimationFrame(animationFrame)
     }

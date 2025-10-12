@@ -5,11 +5,11 @@
         {{ authStore.user?.username.charAt(0) }}
       </button>
       <div
-        class="peer-focus:block hidden active:block absolute right-0 top-full bg-neutral-800 rounded-md w-32 shadow-md"
+        class="peer-focus:block hidden active:block absolute right-0 top-full bg-neutral-800 rounded-md w-32 text-neutral-200 shadow-md border"
       >
         <button
           @click="showUserProfile = true"
-          class="p-2 cursor-pointer flex w-full text-neutral-200 text-right rounded-md hover:bg-neutral-700"
+          class="p-2 cursor-pointer flex w-full text-right rounded-md hover:bg-neutral-700"
         >
           Profile
         </button>

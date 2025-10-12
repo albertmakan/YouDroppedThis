@@ -57,40 +57,43 @@ export const canvasApi = {
   },
 
   async getArtworksInArea(minX: number, maxX: number, minY: number, maxY: number) {
-    const response = await api.get('/canvas/area', {
-      params: { minX, maxX, minY, maxY },
-    })
-    return response.data as { artworks: Artwork[] }
+    const params = { minX, maxX, minY, maxY }
+    const response = await api.get('/canvas/area', { params })
+    const responseData = response.data as { artworks: Artwork[] }
+    responseData.artworks.forEach(
+      (artwork) => (artwork.pixels = parsePixelData(artwork.pixel_data)),
+    )
+    return responseData
   },
 }
 
 export const artworkApi = {
   async placeArtwork(placement: PlacementRequest) {
     const response = await api.post('/artwork/place', placement)
-    return response.data as { artwork: Artwork }
+    const responseData = response.data as { artwork: Artwork }
+    responseData.artwork.pixels = parsePixelData(responseData.artwork.pixel_data)
+    return responseData
   },
 
   async collectArtwork(artworkId: number) {
     const response = await api.post(`/artwork/${artworkId}/collect`)
-    return response.data as { artwork: Artwork; user: User }
+    const responseData = response.data as { artwork: Artwork; user: User }
+    responseData.artwork.pixels = parsePixelData(responseData.artwork.pixel_data)
+    return responseData
   },
 
   async getUserArtworks(
     type: 'placed' | 'collected' | 'all' = 'all',
     page: number = 1,
     limit: number = 12,
-  ): Promise<{ artworks: Artwork[]; total: number }> {
-    const response = await api.get('/artwork/mine', {
-      params: {
-        type,
-        page,
-        limit,
-      },
-    })
-    return {
-      artworks: response.data.artworks,
-      total: response.data.total,
-    }
+  ) {
+    const params = { type, page, limit }
+    const response = await api.get('/artwork/mine', { params })
+    const responseData = response.data as { artworks: Artwork[]; total: number }
+    responseData.artworks.forEach(
+      (artwork) => (artwork.pixels = parsePixelData(artwork.pixel_data)),
+    )
+    return responseData
   },
 }
 
@@ -104,4 +107,14 @@ export const userApi = {
     const response = await api.post('/user/daily-bonus')
     return response.data as { success: boolean; message: string; newBalance?: number }
   },
+}
+
+export function parsePixelData(pixel_data: string) {
+  try {
+    return pixel_data.startsWith('[[')
+      ? (JSON.parse(pixel_data) as string[][])
+      : Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => '#ffffff'))
+  } catch (e) {
+    console.log(e)
+  }
 }

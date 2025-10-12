@@ -121,7 +121,8 @@ export function useWebSocket() {
 
   return {
     isConnected: computed(() => service.value.isConnected),
-    connect,
+    connect: (handler?: (message: WebSocketMessage) => void) =>
+      connect('ws://localhost:8000/ws', handler),
     send,
     disconnect,
   }

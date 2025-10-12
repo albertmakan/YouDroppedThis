@@ -1,7 +1,7 @@
 <template>
   <div class="relative w-full rounded-md" ref="container">
     <div
-      class="absolute left-0 top-0 w-full whitespace-pre-wrap break-words rounded-md bg-code-editor px-2 py-1 font-mono font-semibold caret-white"
+      class="absolute left-0 top-0 w-full whitespace-pre-wrap break-words rounded-md bg-code-editor border px-2 py-1 font-mono font-semibold caret-white"
       ref="highlight"
     >
       <code>
@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { createExpressionCache } from '@/utils/parser'
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, useTemplateRef, watch } from 'vue'
 import HighlightedExpression from './HighlightedExpression'
 import { insert, wrap } from '@/utils/suggestions'
 import Suggestions from './Suggestions.vue'
@@ -156,5 +156,13 @@ function resize() {
 }
 
 watch(text, resize)
-onMounted(resize)
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  if (!textareaRef.value) return
+  resizeObserver = new ResizeObserver(resize)
+  resizeObserver.observe(textareaRef.value)
+})
+onScopeDispose(() => {
+  resizeObserver?.disconnect()
+})
 </script>

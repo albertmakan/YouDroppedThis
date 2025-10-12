@@ -17,15 +17,14 @@
 - jump to coordinate
 - lazy loading (calculate chunk IDs from vx,vy,w,h,zoom)
 - expression in editor
-
 - disappear animation
+- improve editor UX (open from canvas, move with canvas, minimize to corner)
+
 - buying coins
-- show adjacent artworks in editor (using scroll and pinch)
+- collectible after time
 - canvas texture ~
 - Multi-Level Caching
 - notifications
 - define economy
 - daily themes
-- saving coordinates
-- collectible after time
 - deploy on cloud
