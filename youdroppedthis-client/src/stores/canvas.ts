@@ -9,6 +9,8 @@ export const CHUNK_SIZE = 16
 export const ART_SIZE = 64
 export const MIN_ZOOM = 0.5
 export const MAX_ZOOM = 10
+export const CANVAS_BACKGROUND = '#18181b'
+export const GRID_COLOR = '#3f3f46'
 
 export const useCanvasStore = defineStore('canvas', () => {
   const canvasChunks = shallowRef<{ arts?: Artwork[]; isLoading: boolean }[][]>([])

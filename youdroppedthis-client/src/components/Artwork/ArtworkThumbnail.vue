@@ -8,7 +8,7 @@ import { onMounted, ref, type DeepReadonly } from 'vue'
 import { renderArtwork } from './renderArtwork'
 const size = 64
 
-const { artwork } = defineProps<{ artwork: DeepReadonly<Artwork> }>()
+const { artwork } = defineProps<{ artwork: DeepReadonly<Pick<Artwork, 'pixels' | 'resolution'>> }>()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 onMounted(() => {

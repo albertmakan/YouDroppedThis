@@ -1,6 +1,6 @@
 <template>
   <div
-    class="fixed pointer-events-none border-2 border-current border-dashed text-neutral-200"
+    class="fixed pointer-events-none border-2 border-neutral-600 border-dashed text-neutral-200"
     :style="{
       left: `${left}px`,
       top: `${top}px`,
@@ -10,8 +10,8 @@
   >
     <div class="relative h-full">
       <div
-        class="absolute bottom-full left-1/2 -translate-x-1/2 min-w-full flex gap-4 justify-between pointer-events-auto bg-neutral-800/90 backdrop-blur-sm rounded-lg p-2 border font-mono"
-        @touchmove.prevent
+        class="absolute bottom-full left-1/2 -translate-x-1/2 min-w-full box-content flex gap-4 justify-between pointer-events-auto bg-black/90 backdrop-blur-sm rounded-lg p-2 border border-neutral-600 font-mono"
+        @touchmove.prevent.passive
       >
         <div class="flex gap-2">
           <div class="rounded-full bg-teal-800 size-6 text-white text-center">
@@ -24,7 +24,7 @@
             <TimeRemainingIcon :remaining="timeRemaining.p" />
           </button>
           <div
-            class="peer-focus:block hidden active:block absolute top-full left-1/2 -translate-x-1/2 p-1 mt-0.5 bg-neutral-800 rounded-md text-neutral-200 text-sm shadow-md border pointer-events-none"
+            class="peer-focus:block hidden active:block absolute top-full left-1/2 -translate-x-1/2 p-1 mt-0.5 bg-black rounded-md text-neutral-200 text-sm shadow-md border border-neutral-600 pointer-events-none"
           >
             {{ timeRemaining.s }}
           </div>
@@ -32,12 +32,12 @@
       </div>
 
       <div
-        class="absolute top-full left-1/2 -translate-x-1/2 min-w-full bg-neutral-800/90 backdrop-blur-sm rounded-lg flex justify-center border"
+        class="absolute top-full left-1/2 -translate-x-1/2 min-w-full box-content bg-black/90 backdrop-blur-sm rounded-lg flex justify-center p-1 border border-neutral-600"
       >
         <button
           @click="collectArtwork"
-          @touchmove.prevent
-          class="cursor-pointer pointer-events-auto size-8 m-1"
+          @touchmove.prevent.passive
+          class="cursor-pointer pointer-events-auto size-8"
           title="Collect"
         >
           <CollectIcon />

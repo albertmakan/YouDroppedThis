@@ -1,11 +1,11 @@
 <template>
   <div
-    class="w-fit h-fit fixed text-neutral-200 border-2 border-current border-dashed pointer-events-none"
+    class="w-fit h-fit fixed text-neutral-200 border border-neutral-600 border-dashed pointer-events-none box-border font-mono"
     :style="{ left: `${left}px`, top: `${top}px` }"
   >
     <div class="relative min-w-full">
       <div
-        class="absolute p-4 bg-neutral-800/90 backdrop-blur-xl rounded-lg min-w-full border text-center"
+        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600 text-center"
         :class="{
           'bottom-0 left-1/2 -translate-x-1/2': editorLayout === 'v',
           'right-full top-0': editorLayout === 'h',
@@ -16,7 +16,7 @@
             @click="editorLayout = editorLayout === 'v' ? 'h' : 'v'"
             class="cursor-pointer pointer-events-auto"
           >
-            {{ editorLayout }}
+            {{ editorLayout === 'h' ? '=' : '- -' }}
           </button>
           <button @click="closeModal" class="cursor-pointer size-6 pointer-events-auto">
             <XMarkIcon />
@@ -27,7 +27,7 @@
           <select
             v-model.number="editorStore.resolution"
             @change="editorStore.saveState"
-            class="bg-neutral-700 p-1 rounded-md cursor-pointer hover:bg-neutral-600 mx-2 pointer-events-auto"
+            class="bg-neutral-900 p-1 rounded-md cursor-pointer hover:bg-neutral-800 mx-2 pointer-events-auto"
           >
             <option value="16">16 x 16</option>
             <option value="32">32 x 32</option>
@@ -40,7 +40,7 @@
           <button
             v-for="tool in tools"
             :class="{
-              'bg-neutral-700 hover:bg-neutral-600 text-neutral-200':
+              'bg-neutral-900 hover:bg-neutral-800 text-neutral-200':
                 editorStore.tool !== tool.name,
               'bg-neutral-200 text-neutral-700': editorStore.tool === tool.name,
             }"
@@ -49,13 +49,13 @@
           >
             <component :is="tool.icon" />
           </button>
-          <button @click="clearCanvas" class="bg-neutral-700 hover:bg-neutral-600" title="Clear">
+          <button @click="clearCanvas" class="bg-neutral-900 hover:bg-neutral-800" title="Clear">
             <XMarkIcon />
           </button>
           <button
             @click="editorStore.undo"
             :disabled="!editorStore.canUndo"
-            class="size-8 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50"
+            class="size-8 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50"
             title="Undo"
           >
             <UndoIcon />
@@ -63,14 +63,14 @@
           <button
             @click="editorStore.redo"
             :disabled="!editorStore.canRedo"
-            class="size-8 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50"
+            class="size-8 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-50"
             title="Redo"
           >
             <RedoIcon />
           </button>
           <button
             :class="{
-              'bg-neutral-700 hover:bg-neutral-600 text-neutral-200': !showGrid,
+              'bg-neutral-900 hover:bg-neutral-800 text-neutral-200': !showGrid,
               'bg-neutral-200 text-neutral-700': showGrid,
             }"
             @click="showGrid = !showGrid"
@@ -97,14 +97,15 @@
         <div class="flex justify-center gap-4 mt-2">
           <button
             @click="editorStore.tool = 'pen'"
-            class="cursor-pointer bg-neutral-700 hover:bg-neutral-600 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
           >
+            <span class="size-4"><XMarkIcon /></span>
             Cancel
           </button>
 
           <button
             @click="applyExpression"
-            class="cursor-pointer bg-neutral-700 hover:bg-neutral-600 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
           >
             <span class="size-4"><CheckmarkIcon /></span>
             Apply
@@ -120,17 +121,17 @@
       @mousemove="draw"
       @mouseup="stopDrawing"
       @mouseleave="stopDrawing"
-      @touchstart.prevent="startDrawing"
+      @touchstart.passive="startDrawing"
       @touchmove.prevent="draw"
       @touchend.prevent="stopDrawing"
       @touchcancel.prevent="stopDrawing"
       @contextmenu.prevent
-      @wheel.passive="handleWheel"
+      @wheel.prevent="handleWheel"
       :class="{ 'pointer-events-none': !editorStore.tool, 'pointer-events-auto': editorStore.tool }"
     />
     <div class="relative min-w-full">
       <div
-        class="absolute p-4 bg-neutral-800/90 backdrop-blur-xl rounded-lg min-w-full border"
+        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600"
         :class="{
           'top-0 left-1/2 -translate-x-1/2': editorLayout === 'v',
           'left-full bottom-0': editorLayout === 'h',
@@ -160,9 +161,9 @@
           <button
             @click="done"
             :disabled="editorStore.tool === 'code'"
-            class="border-current border disabled:opacity-50 rounded-md px-2 py-1 hover:bg-neutral-700 cursor-pointer pointer-events-auto"
+            class="border-current border disabled:opacity-50 rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
           >
-            Done
+            Drop
           </button>
         </div>
       </div>
@@ -184,6 +185,7 @@ import SparkleIcon from '../Icons/SparkleIcon.vue'
 import ExpressionEditor from '../Editor/ExpressionEditor.vue'
 import CheckmarkIcon from '../Icons/CheckmarkIcon.vue'
 import { renderArtwork } from '../Artwork/renderArtwork'
+import { GRID_COLOR } from '@/stores/canvas'
 
 const pixelCanvas = useTemplateRef<HTMLCanvasElement>('pixel-canvas')
 
@@ -232,7 +234,7 @@ function drawCanvas() {
   renderArtwork(editorStore.pixels, ctx, 0, 0, resolution, resolution, pixelSize.value)
   // Draw grid
   if (showGrid.value) {
-    ctx.strokeStyle = '#cccccc'
+    ctx.strokeStyle = GRID_COLOR
     ctx.lineWidth = 1
     // Vertical lines
     for (let x = 0; x <= resolution; x++) {

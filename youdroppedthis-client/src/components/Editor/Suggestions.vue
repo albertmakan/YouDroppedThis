@@ -4,15 +4,15 @@
     <span class="relative">
       <div
         ref="caret"
-        class="absolute left-0 top-full z-30 max-h-20 overflow-auto bg-neutral-700 text-neutral-200 shadow-lg border"
+        class="absolute left-0 top-full z-30 max-h-20 overflow-auto bg-neutral-900 text-neutral-200 shadow-lg border border-neutral-600"
       >
         <button
           v-for="(s, i) in current.suggestions"
           @click="insert(s)"
           @mousedown="emit('mousedown')"
           @mouseup.stop
-          class="block w-full border-0 bg-opacity-60 px-1 text-left text-sm hover:bg-neutral-500 text-nowrap h-5"
-          :class="{ 'bg-neutral-500': i === index }"
+          class="block w-full border-0 bg-opacity-60 px-1 text-left text-sm hover:bg-neutral-700 text-nowrap h-5"
+          :class="{ 'bg-neutral-600': i === index }"
         >
           <span className="text-code-var">{{ current.lastPart }}</span
           >{{ s.substring(current.lastPart.length) }}

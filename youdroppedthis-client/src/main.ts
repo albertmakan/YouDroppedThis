@@ -5,9 +5,11 @@ import App from './App.vue'
 import './style.css'
 
 import CanvasView from '@/components/Canvas/CanvasView.vue'
+import ShopView from './components/Shop/ShopView.vue'
 
 const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: CanvasView },
+  { path: '/shop', name: 'shop', component: ShopView },
   // { path: '/profile', name: 'profile', component: ProfileView, meta: { requiresAuth: true } },
 ]
 

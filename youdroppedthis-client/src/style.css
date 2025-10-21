@@ -2,7 +2,7 @@
 
 @theme {
   --color-primary: var(--color-teal-500);
-  --color-code-editor: var(--color-neutral-700);
+  --color-code-editor: var(--color-neutral-900);
   --color-code-num: var(--color-lime-300);
   --color-code-str: var(--color-green-500);
   --color-code-bool: var(--color-blue-500);
@@ -31,6 +31,7 @@
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 0px;
+  height: 0px;
 }
 
 ::-webkit-scrollbar-track {
