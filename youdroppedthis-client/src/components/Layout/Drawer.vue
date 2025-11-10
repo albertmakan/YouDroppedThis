@@ -48,7 +48,7 @@
             Economy
           </h3>
           <router-link
-            to="/shop"
+            to="/settings/purchase"
             @click="closeDrawer"
             class="flex justify-between text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
@@ -93,7 +93,11 @@
   <div v-if="isOpen" class="fixed inset-0 bg-black opacity-30 z-30" @click="closeDrawer" />
 
   <SelectLocationPopup v-if="isLocationPopupOpen" @close="isLocationPopupOpen = false" />
-  <CanvasStatsPopup v-if="showStats" @close="showStats = false" />
+  <CanvasStatsPopup
+    v-if="showStats && canvasStore.canvasConfig"
+    @close="showStats = false"
+    :canvas="canvasStore.canvasConfig"
+  />
   <InfoPopup v-if="showAbout" title="About" @close="showAbout = false">
     <p>YouDroppedThis - Drop Art, Find Treasures</p>
     <p>Create pixel art and drop it on a shared canvas.</p>
@@ -101,7 +105,11 @@
     <p>🎨 Create • 🗺️ Explore • 🎯 Collect • ✨ Discover</p>
     <p>Join our community and be part of the world's most dynamic collaborative art canvas!</p>
   </InfoPopup>
-  <UserCollection v-if="showCollection" @close="showCollection = false" />
+  <UserCollection
+    v-if="showCollection && authStore.user"
+    @close="showCollection = false"
+    :user-id="authStore.user.id"
+  />
 </template>
 
 <script setup lang="ts">
@@ -117,10 +125,12 @@ import MessageIcon from '../Icons/MessageIcon.vue'
 import SelectLocationPopup from '../Canvas/SelectLocationPopup.vue'
 import CanvasStatsPopup from '../Canvas/CanvasStatsPopup.vue'
 import InfoPopup from './InfoPopup.vue'
-import DailyBonus from '../Shop/DailyBonusButton.vue'
+import DailyBonus from '../User/DailyBonusButton.vue'
 import UserCollection from '../User/UserCollection.vue'
+import { useCanvasStore } from '@/stores/canvas'
 
 const authStore = useAuthStore()
+const canvasStore = useCanvasStore()
 
 const isOpen = ref(false)
 const showStats = ref(false)

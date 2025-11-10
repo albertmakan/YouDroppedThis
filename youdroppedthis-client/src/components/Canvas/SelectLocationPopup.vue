@@ -15,8 +15,8 @@
             <input
               type="number"
               v-model="location.x"
-              :min="-CANVAS_SIZE / 2"
-              :max="CANVAS_SIZE / 2 - 1"
+              :min="canvasStore.canvasConfig?.min_x"
+              :max="canvasStore.canvasConfig?.max_x"
               class="bg-neutral-900 rounded-md p-1"
             />
           </label>
@@ -26,8 +26,8 @@
               type="number"
               v-model="location.y"
               name="y"
-              :min="-CANVAS_SIZE / 2"
-              :max="CANVAS_SIZE / 2 - 1"
+              :min="canvasStore.canvasConfig?.min_y"
+              :max="canvasStore.canvasConfig?.max_y"
               class="bg-neutral-900 rounded-md p-1"
             />
           </label>
@@ -45,12 +45,13 @@
 </template>
 
 <script setup lang="ts">
-import { CANVAS_SIZE } from '@/stores/canvas'
+import { useCanvasStore } from '@/stores/canvas'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const canvasStore = useCanvasStore()
 
 const emit = defineEmits<{
   close: []

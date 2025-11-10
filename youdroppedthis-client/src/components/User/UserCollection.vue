@@ -1,15 +1,15 @@
 <template>
   <div class="fixed inset-0 flex items-center z-50 bg-black/50">
     <div
-      class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 p-4 w-fit border border-neutral-600 font-mono"
+      class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 p-4 w-fit border border-neutral-600"
       @click.stop
     >
       <div class="flex w-full justify-between">
         <div class="flex gap-2">
           <div class="rounded-full bg-teal-800 size-6 text-white text-center">
-            {{ authStore.user?.username?.charAt(0) }}
+            {{ profile?.username?.charAt(0) }}
           </div>
-          <span class="">{{ authStore.user?.username }}</span>
+          <span class="">{{ profile?.username }}</span>
         </div>
         <button @click="closeModal" class="cursor-pointer size-6"><XMarkIcon /></button>
       </div>
@@ -30,7 +30,7 @@
             </span>
             <span class="capitalize">{{ tab }}</span>
             <span class="text-xs text-neutral-400 bg-neutral-800 px-1 rounded-full">
-              {{ total[tab] }}
+              {{ profile?.[`artworks_${tab}_count`] }}
             </span>
           </button>
         </div>
@@ -54,7 +54,7 @@
               <PaletteIcon />
             </div>
             <h3 class="text-xl my-2">No artworks created yet</h3>
-            <p class="my-6 text-sm">
+            <p v-if="userId === authStore.user?.id" class="my-6 text-sm">
               Start creating and placing your first pixel art on the canvas!
             </p>
           </template>
@@ -63,7 +63,7 @@
               <CollectionIcon />
             </div>
             <h3 class="text-xl my-2">No artworks collected yet</h3>
-            <p class="my-6 text-sm">
+            <p v-if="userId === authStore.user?.id" class="my-6 text-sm">
               Explore the canvas and collect interesting artworks before they expire!
             </p>
           </template>
@@ -137,6 +137,11 @@ import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import PaletteIcon from '../Icons/PaletteIcon.vue'
 import CollectionIcon from '../Icons/CollectionIcon.vue'
+import { useProfile } from '@/stores/profiles'
+
+const { userId } = defineProps<{
+  userId: string
+}>()
 
 const emit = defineEmits<{
   close: []
@@ -146,10 +151,11 @@ function closeModal() {
   emit('close')
 }
 
-const authStore = useAuthStore()
 const router = useRouter()
 
-// Component state
+const authStore = useAuthStore()
+const { profile, isLoading: profileLoading } = useProfile(userId)
+
 const tabs = ['placed', 'collected'] as const
 const activeTab = ref<'placed' | 'collected'>('placed')
 const isLoading = ref(false)
@@ -157,17 +163,14 @@ const isLoadingMore = ref(false)
 const selectedArtworkId = ref<number | null>(null)
 const showDetailModal = ref(false)
 
-const ITEMS_PER_PAGE = 12
+const ITEMS_PER_PAGE = 16
 
 const artworks = { placed: ref<Artwork[]>([]), collected: ref<Artwork[]>([]) }
 const page = { placed: ref(1), collected: ref(1) }
 const hasMore = { placed: ref(true), collected: ref(true) }
-const total = { placed: ref<number | null>(null), collected: ref<number | null>(null) }
 
-// Computed properties
 const currentArtworks = computed(() => artworks[activeTab.value].value)
 
-// Methods
 async function setActiveTab(tab: 'placed' | 'collected') {
   if (activeTab.value === tab) return
 
@@ -189,21 +192,23 @@ async function loadArtworks(reset: boolean = false) {
 
   try {
     const pageNum = reset ? 1 : page[activeTab.value].value
-    const response = await artworkApi.getUserArtworks(activeTab.value, pageNum, ITEMS_PER_PAGE)
-    if (response) {
-      const { artworks: loadedArtworks, total: totalCount } = response
-      const more = loadedArtworks.length === ITEMS_PER_PAGE && pageNum * ITEMS_PER_PAGE < totalCount
+    const { artworks: loadedArtworks } = await artworkApi.getUserArtworks(
+      activeTab.value,
+      pageNum,
+      ITEMS_PER_PAGE,
+    )
+    const more =
+      loadedArtworks.length === ITEMS_PER_PAGE &&
+      pageNum * ITEMS_PER_PAGE < profile.value?.[`artworks_${activeTab.value}_count`]!
 
-      if (reset) {
-        artworks[activeTab.value].value = loadedArtworks
-        page[activeTab.value].value = 1
-      } else {
-        artworks[activeTab.value].value.push(...loadedArtworks)
-      }
-      hasMore[activeTab.value].value = more
-      total[activeTab.value].value = totalCount
-      page[activeTab.value].value++
+    if (reset) {
+      artworks[activeTab.value].value = loadedArtworks
+      page[activeTab.value].value = 1
+    } else {
+      artworks[activeTab.value].value.push(...loadedArtworks)
     }
+    hasMore[activeTab.value].value = more
+    page[activeTab.value].value++
   } catch (error) {
     console.error('Failed to load artworks:', error)
   } finally {

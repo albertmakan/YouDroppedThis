@@ -8,12 +8,12 @@ import { onMounted, ref, type DeepReadonly } from 'vue'
 import { renderArtwork } from './renderArtwork'
 const size = 64
 
-const { artwork } = defineProps<{ artwork: DeepReadonly<Pick<Artwork, 'pixels' | 'resolution'>> }>()
+const { artwork } = defineProps<{ artwork: DeepReadonly<Pick<Artwork, 'pixels'>> }>()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 onMounted(() => {
   const context = canvasRef.value!.getContext('2d')
-  const resolution = artwork.resolution
+  const resolution = artwork.pixels?.length || 1
   const pixelSize = size / resolution
   renderArtwork(artwork.pixels ?? [], context!, 0, 0, resolution, resolution, pixelSize)
 })

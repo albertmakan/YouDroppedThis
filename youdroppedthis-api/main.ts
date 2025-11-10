@@ -1,41 +1,34 @@
-import { Application, Router } from "./deps.ts";
-import { oakCors } from "./deps.ts";
-import { authRouter } from "./routes/auth.ts";
-import { canvasRouter } from "./routes/canvas.ts";
-import { artworkRouter } from "./routes/artwork.ts";
-import { userRouter } from "./routes/user.ts";
+import { Application, Router, oakCors } from "./deps.ts";
+import { initDatabase } from "./config/database.ts";
+import { initSupabase } from "./config/supabase.ts";
 import { authMiddleware } from "./middleware/auth.ts";
 import { rateLimitMiddleware } from "./middleware/rateLimit.ts";
-import { WebSocketService } from "./services/WebSocketService.ts";
-import { ExpirationService } from "./services/ExpirationService.ts";
-import { initDatabase } from "./config/database.ts";
+import { userRouter } from "./modules/user/routes.ts";
+import { canvasRouter } from "./modules/canvas/routes.ts";
+import { artworkRouter } from "./modules/artwork/routes.ts";
+import { transactionRouter } from "./modules/transaction/routes.ts";
 
 const router = new Router();
-// Routes
-router.use("/api/auth", authRouter.routes(), authRouter.allowedMethods());
+router.use("/api/users", userRouter.routes(), userRouter.allowedMethods());
 router.use(
-  "/api/user",
-  authMiddleware,
-  userRouter.routes(),
-  userRouter.allowedMethods()
+  "/api/canvases",
+  canvasRouter.routes(),
+  canvasRouter.allowedMethods()
 );
-router.use("/api/canvas", canvasRouter.routes(), canvasRouter.allowedMethods());
 router.use(
-  "/api/artwork",
+  "/api/artworks",
   authMiddleware,
   artworkRouter.routes(),
   artworkRouter.allowedMethods()
 );
-
-const wsService = new WebSocketService();
-// WebSocket endpoint
-router.get("/ws", (ctx) => {
-  const socket = ctx.upgrade();
-  wsService.handleConnection(socket, ctx);
-});
+router.use(
+  "/api/transactions",
+  authMiddleware,
+  transactionRouter.routes(),
+  transactionRouter.allowedMethods()
+);
 
 const app = new Application();
-const expirationService = new ExpirationService();
 
 // CORS
 app.use(
@@ -52,11 +45,9 @@ app.use(router.routes());
 
 // Initialize services
 await initDatabase();
-expirationService.start();
+initSupabase();
 
 const PORT = parseInt(Deno.env.get("PORT") || "8000");
 
 console.log(`🚀 YouDroppedThis server running on port ${PORT}`);
-console.log(`📡 WebSocket server ready at ws://localhost:${PORT}/ws`);
-
 await app.listen({ port: PORT });

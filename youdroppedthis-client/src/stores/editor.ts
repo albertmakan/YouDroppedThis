@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import { solvePostfix, tokenize, tokensToPostfix } from '@/utils/parser'
 
-// Color palette for pixel art
+// Color palette for pixel art - move to canvas config
 export const DEFAULT_PALETTE = [
   '#000000',
   '#FFFFFF',
@@ -143,18 +143,18 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function getPixelData() {
-    return JSON.stringify(pixels.value)
-  }
-
-  function loadPixelData(data: string) {
-    try {
-      const parsedData = JSON.parse(data)
-      if (Array.isArray(parsedData) && parsedData.length === pixelCount.value) {
-        pixels.value = parsedData
-      }
-    } catch (error) {
-      console.error('Failed to load pixel data:', error)
-    }
+    const usedPalette: string[] = []
+    const matrix = pixels.value.map((row) =>
+      row.map((color) => {
+        const colorIndex = usedPalette.findIndex((c) => c === color)
+        if (colorIndex === -1) {
+          usedPalette.push(color)
+          return usedPalette.length - 1
+        }
+        return colorIndex
+      }),
+    )
+    return { palette: usedPalette, mat: matrix }
   }
 
   return {
@@ -171,7 +171,6 @@ export const useEditorStore = defineStore('editor', () => {
     clearCanvas,
     applyFunction,
     getPixelData,
-    loadPixelData,
     saveState,
     canUndo,
     canRedo,

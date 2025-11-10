@@ -17,20 +17,13 @@
             <span class="text-xs text-neutral-400">{{ authStore.user.email }}</span>
           </div>
         </div>
-        <button
-          @click="showUserProfile = true"
-          class="flex gap-3 items-center text-left p-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
-        >
-          <span class="size-5"><ProfileIcon /></span>
-          Profile
-        </button>
-        <button
-          @click="showUserProfile = true"
+        <router-link
+          to="/settings/general"
           class="flex gap-3 items-center text-left p-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
         >
           <span class="size-5"><SettingsIcon /></span>
           Settings
-        </button>
+        </router-link>
         <button
           @click="authStore.logout"
           class="flex gap-3 items-center text-left p-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
@@ -48,12 +41,7 @@
     >
       Sign in
     </button>
-    <AuthModal
-      :is-open="showAuthModal"
-      :initial-mode="authModalMode"
-      @close="closeAuthModal"
-      @success="handleAuthSuccess"
-    />
+    <AuthModal :is-open="showAuthModal" :initial-mode="authModalMode" @close="closeAuthModal" />
   </template>
 </template>
 
@@ -61,7 +49,6 @@
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/User/Auth.vue'
 import { ref } from 'vue'
-import ProfileIcon from '../Icons/ProfileIcon.vue'
 import SettingsIcon from '../Icons/SettingsIcon.vue'
 import LogoutIcon from '../Icons/LogoutIcon.vue'
 
@@ -69,7 +56,6 @@ const authStore = useAuthStore()
 
 const showAuthModal = ref(false)
 const authModalMode = ref<'login' | 'register'>('login')
-const showUserProfile = ref(false)
 
 function openAuthModal(mode: 'login' | 'register') {
   authModalMode.value = mode
@@ -78,10 +64,5 @@ function openAuthModal(mode: 'login' | 'register') {
 
 function closeAuthModal() {
   showAuthModal.value = false
-}
-
-function handleAuthSuccess() {
-  console.log('Authentication successful!')
-  // Could show a success toast here
 }
 </script>

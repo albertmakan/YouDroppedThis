@@ -20,16 +20,22 @@
 - disappear animation
 - improve editor UX (open from canvas, move with canvas, minimize to corner)
 - options drawer
-
-- user collection artwork options popup
-- account page
-- user stats (alter tables)
-- buying coins
-- collectible after time
+- expire logic on client
+- user stats (alter tables) ~
 - canvas stats
+- account page ~
+- sql script
+
+- welcomebonus explicit?
+- user collection artwork options popup
+- buying coins ~ // payment processor
+- collectible after time
+- sending full artwork vs id when created??
+
+- improve rate limiter (cron?)
 - canvas texture ~
-- Multi-Level Caching
-- notifications
+- Multi-Level Caching?
+- notifications?
 - define economy
 - daily themes
 - deploy on cloud

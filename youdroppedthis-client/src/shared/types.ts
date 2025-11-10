@@ -1,79 +1,77 @@
 import type { Effect, Particle } from '@/utils/physics'
 
-export interface User {
-  id: number
-  username: string
-  email: string
-  balance: number
-  created_at: string
-  artworks?: Artwork[]
+export type PixelData = {
+  palette: string[]
+  mat: number[][]
 }
 
-export interface Artwork {
+export type Profile = {
+  id: string
+  email: string
+  username: string
+  profile_picture?: PixelData
+  bio?: string
+  balance: number
+  artworks_placed_count?: number
+  artworks_collected_count?: number
+  created_at: string
+  updated_at?: string
+}
+
+export type Artwork = {
   id: number
-  user_id: number
-  username?: string
+  pixel_data: PixelData
+  user_id: string
+  canvas_id: number
   x: number
   y: number
-  resolution: 16 | 32 | 64
-  pixel_data: string // JSON string of hex colors
-  pixels?: string[][]
   created_at: string
-  expires_at: string
-  collected_by?: number
+  collectable_after?: string
   collected_at?: string
-  is_expired: boolean
+  collected_by?: string
+  expires_at: string
+  is_expired?: boolean
 
+  pixels?: string[][]
   particles?: Particle[]
   collectionEffect?: Effect
 }
 
-export interface Transaction {
+export type CanvasInfo = {
   id: number
-  user_id: number
-  type: 'placement' | 'collection' | 'bonus'
-  amount: number
-  artwork_id?: number
+  name: string
   description?: string
+  max_artworks_per_user_per_hour: number
+  artwork_expiry_minutes: number
+  placement_fee: number
   created_at: string
+  updated_at?: string
+  grid_size: number
+  is_active?: boolean
+  max_x?: number
+  max_y?: number
+  min_x?: number
+  min_y?: number
+  premium_zone_enabled?: boolean
+  background_color?: string
+  theme?: string
+  total_artworks_placed: number
+  total_artworks_collected: number
+  active_artworks_count: number
+}
+
+export type Transaction = {
+  id: number
+  user_id: string
+  amount: number
+  type: string
+  created_at: string
+  description?: string
+  artwork_id?: number
 }
 
 export interface PlacementRequest {
   x: number
   y: number
-  resolution: number
-  pixel_data: string
-}
-
-export interface CanvasState {
-  artworks: Artwork[]
-  bounds: {
-    minX: number
-    maxX: number
-    minY: number
-    maxY: number
-  }
-}
-
-export type WebSocketMessage = {
-  userId?: number
-} & (
-  | { type: 'artwork_placed'; data: Artwork }
-  | {
-      type: 'artwork_collected'
-      data: { collected: { id: number; x: number; y: number }; collectorId: number }
-    }
-  | {
-      type: 'artwork_expired'
-      data: { expired: { id: number; x: number; y: number }[] }
-    }
-  | { type: 'user_update' | 'auth' | 'ping' | 'pong'; data?: any }
-)
-export interface AuthResponse {
-  user: User
-  token: string
-}
-
-export interface ApiError {
-  error: string
+  pixelData: PixelData
 }

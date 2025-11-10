@@ -1,25 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
-import type { User, AuthResponse } from '@/shared/types'
-import { authApi } from '@/services/api'
-import { isAxiosError } from 'axios'
+import type { Profile } from '@/shared/types'
+import { authApi, userApi } from '@/services/api'
+import type { AuthResponse } from '@supabase/auth-js'
+import { supabase } from '@/services/supabase'
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
-  const token = ref<string | null>(localStorage.getItem('auth_token'))
+  const user = ref<Profile | null>(null)
 
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const isAuthenticated = computed(() => !!user.value)
 
-  async function login(username: string, password: string) {
+  async function login(email: string, password: string) {
     isLoading.value = true
     error.value = null
     try {
-      const response = await authApi.login(username, password)
-      setAuth(response)
+      const { data, error: authError } = await authApi.signIn(email, password)
+      if (authError) {
+        error.value = authError.message
+      } else {
+        setAuth(data.user)
+      }
     } catch (err: any) {
-      error.value = isAxiosError(err) ? err.response?.data.error : err.message
+      error.value = 'Server error'
     } finally {
       isLoading.value = false
       return !error.value
@@ -30,56 +34,72 @@ export const useAuthStore = defineStore('auth', () => {
     isLoading.value = true
     error.value = null
     try {
-      const response = await authApi.register(username, email, password)
-      setAuth(response)
+      const { data, error: authError } = await authApi.signUp(username, email, password)
+      if (authError) {
+        error.value = authError.message
+      } else {
+        setAuth(data.user)
+      }
     } catch (err: any) {
-      error.value = isAxiosError(err) ? err.response?.data.error : err.message
+      error.value = 'Server error'
     } finally {
       isLoading.value = false
       return !error.value
     }
   }
 
-  function setAuth(authData: AuthResponse) {
-    user.value = authData.user
-    token.value = authData.token
-    localStorage.setItem('auth_token', authData.token)
+  function setAuth(authUserData: AuthResponse['data']['user']) {
+    user.value = authUserData && {
+      id: authUserData.id,
+      email: authUserData.email || '',
+      username: authUserData.user_metadata.username ?? '',
+      created_at: authUserData.created_at,
+      balance: 0,
+    }
+    loadProfile()
   }
 
-  function logout() {
-    user.value = null
-    token.value = null
-    localStorage.removeItem('auth_token')
+  async function logout() {
+    const { error: authError } = await authApi.signOut()
+    if (authError) {
+      error.value = authError.message
+    } else {
+      user.value = null
+    }
   }
 
-  async function loadUser(): Promise<void> {
-    if (token.value && !user.value) {
+  async function loadProfile() {
+    if (user.value) {
       try {
-        const userData = await authApi.getProfile()
-        user.value = userData.user
+        const userData = await userApi.getProfile(user.value.id)
+        user.value = { ...user.value, ...userData.profile }
       } catch (error) {
         logout() // Token is invalid
       }
     }
   }
 
-  function updateBalance(newBalance: number) {
+  function setProfileInfo(profileInfo: Partial<Profile>) {
     if (user.value) {
-      user.value.balance = newBalance
+      user.value = { ...user.value, ...profileInfo }
     }
   }
 
+  supabase.auth.getSession().then(({ data: { session }, error }) => {
+    setAuth(session?.user ?? null)
+    loadProfile()
+  })
+
   return {
     user: readonly(user),
-    token: readonly(token),
     isAuthenticated,
     isLoading,
     error,
     login,
     register,
     logout,
-    loadUser,
-    updateBalance,
+    loadProfile,
+    setProfileInfo,
     clearError: () => {
       error.value = null
     },

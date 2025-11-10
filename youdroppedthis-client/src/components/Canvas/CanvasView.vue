@@ -13,7 +13,7 @@
       <ProfileButton />
     </div>
 
-    <div class="fixed bottom-0 left-0 p-2 z-10 font-mono">
+    <div class="fixed bottom-0 left-0 p-2 z-10">
       <div
         v-if="showInfo"
         class="text-xs backdrop-blur-xl text-neutral-200 bg-black/50 p-1 rounded-md"
@@ -55,13 +55,11 @@
         @click="reopenEditor"
         class="group relative size-16 hover:scale-110 rounded-md border-2 border-dashed border-neutral-400 cursor-pointer"
       >
-        <ArtworkThumbnail
-          :artwork="{ pixels: editorStore.pixels, resolution: editorStore.resolution as any }"
-        />
+        <ArtworkThumbnail :artwork="{ pixels: editorStore.pixels }" />
         <template v-if="editorLocationTaken">
           <div class="absolute -top-2 -left-2 rounded-full bg-code-warn size-4" />
           <div
-            class="absolute bottom-full mb-2 -left-1/2 group-focus:block hidden text-xs font-mono p-1 backdrop-blur-xl bg-black/50 text-code-warn rounded-md"
+            class="absolute bottom-full mb-2 -left-1/2 group-focus:block hidden text-xs p-1 backdrop-blur-xl bg-black/50 text-code-warn rounded-md"
           >
             Select another location, current one is taken
           </div>
@@ -97,7 +95,7 @@
       }"
     >
       <div class="relative">
-        <div class="absolute bottom-1 text-xs font-mono text-nowrap">
+        <div class="absolute bottom-1 text-xs text-nowrap">
           ({{ selectedLocation?.x }}, {{ selectedLocation?.y }})
         </div>
       </div>
@@ -139,9 +137,9 @@ import { ref, onMounted, onUnmounted, computed, watch, useTemplateRef } from 'vu
 import {
   ART_SIZE,
   CANVAS_BACKGROUND,
-  CANVAS_SIZE,
   CHUNK_SIZE,
   GRID_COLOR,
+  initializeDisintegrationParticles,
   MAX_ZOOM,
   MIN_ZOOM,
   useCanvasStore,
@@ -152,9 +150,8 @@ import { artworkApi } from '@/services/api'
 import type { Artwork } from '@/shared/types'
 import ProfileButton from '@/components/User/ProfileButton.vue'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
-import PlusIcon from '@/components/Icons/PlusIcon.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { updateEffect, updateParticles } from '@/utils/physics'
 import { renderArtwork, renderParticles } from '../Artwork/renderArtwork'
 import ArtworkInfoPopup from '../Artwork/ArtworkInfoPopup.vue'
@@ -162,6 +159,9 @@ import DrawIcon from '../Icons/DrawIcon.vue'
 import Drawer from '../Layout/Drawer.vue'
 import MenuIcon from '../Icons/MenuIcon.vue'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
 
 const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
@@ -216,22 +216,34 @@ watch(
   },
   { deep: true },
 )
+watch(
+  () => route.params.id,
+  (id) => {
+    console.log(id)
+    canvasStore.loadCanvas(+id || 1)
+  },
+)
 
 const chunks = computed(() => {
-  const c = CANVAS_SIZE / 2 / CHUNK_SIZE
-  const cx1 = Math.max(Math.floor(viewX.value / zoomedChunkSize.value), -c)
+  const {
+    min_x = -Infinity,
+    max_x = Infinity,
+    min_y = -Infinity,
+    max_y = Infinity,
+  } = canvasStore.canvasConfig ?? {}
+  const cx1 = Math.max(Math.floor(viewX.value / zoomedChunkSize.value), min_x / CHUNK_SIZE)
   const cx2 = Math.min(
     Math.floor((viewX.value + viewportWidth.value) / zoomedChunkSize.value),
-    c - 1,
+    max_x / CHUNK_SIZE,
   )
-  const cy1 = Math.max(Math.floor(viewY.value / zoomedChunkSize.value), -c)
+  const cy1 = Math.max(Math.floor(viewY.value / zoomedChunkSize.value), min_y / CHUNK_SIZE)
   const cy2 = Math.min(
     Math.floor((viewY.value + viewportHeight.value) / zoomedChunkSize.value),
-    c - 1,
+    max_y / CHUNK_SIZE,
   )
   for (let cx = cx1; cx <= cx2; cx++) {
     for (let cy = cy1; cy <= cy2; cy++) {
-      const chunk = canvasStore.canvasChunks[cy]?.[cx]
+      const chunk = canvasStore.getChunk(cx, cy)
       if (!chunk?.arts && !chunk?.isLoading) {
         canvasStore.loadChunk(cx, cy, zoom.value)
       }
@@ -278,7 +290,10 @@ function reopenEditor() {
   }
   editorStore.isOpen = true
   const { x, y } = editorStore.location
-  if (isOutsideViewport(x, y)) setLocation(x, y)
+  if (isOutsideViewport(x, y)) {
+    setLocation(x, y)
+    updateQueryParams()
+  }
 }
 
 function openEditorAtNewLocation() {
@@ -290,41 +305,37 @@ function openEditorAtNewLocation() {
 }
 
 async function placeArtwork() {
-  if (!authStore.token) {
+  if (!authStore.user) {
     alert('Please log in to place artwork')
     return
   }
-  if (!editorStore.location) {
+  if (!canvasStore.currentCanvasId || !editorStore.location) {
     return
   }
   try {
-    const response = await artworkApi.placeArtwork({
-      pixel_data: editorStore.getPixelData(),
-      resolution: editorStore.resolution,
+    const response = await artworkApi.placeArtwork(canvasStore.currentCanvasId, {
+      pixelData: editorStore.getPixelData(),
       ...editorStore.location,
     })
     editorStore.isOpen = false
     editorStore.location = null
     editorStore.clearCanvas()
-    if (response) {
-      console.log('Artwork placed successfully!')
-    } else {
-      alert('Failed to place artwork')
-    }
+    authStore.setProfileInfo(response.userProfile)
   } catch (error) {
-    console.error('Failed to place artwork:', error)
+    toast.error('Failed to place artwork: ' + JSON.stringify(error))
   }
 }
 
 // Canvas rendering
-let visibleArtworks = 0
+let visibleArtworks = 0,
+  renderCount = 0
 function renderCanvas() {
   if (!ctx.value || !canvasRef.value) return
   const canvas = canvasRef.value
   const context = ctx.value
 
   // Clear canvas
-  context.fillStyle = CANVAS_BACKGROUND
+  context.fillStyle = canvasStore.canvasConfig?.background_color || CANVAS_BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   // Draw grid
@@ -343,56 +354,65 @@ function renderCanvas() {
       }
     }
   }
-
+  let now = ''
+  if (renderCount % 100 === 0) {
+    now = new Date().toISOString()
+  }
   // Draw artworks
   visibleArtworks = 0
   const { cx1, cx2, cy1, cy2 } = chunks.value
   for (let cx = cx1; cx <= cx2; cx++) {
     for (let cy = cy1; cy <= cy2; cy++) {
-      const chunk = canvasStore.canvasChunks[cy]?.[cx]
+      const chunk = canvasStore.getChunk(cx, cy)
       if (chunk?.isLoading) {
         context.fillStyle = 'rgb(255,255,255,0.4)'
         const x = cx * zoomedChunkSize.value - viewX.value
         const y = cy * zoomedChunkSize.value - viewY.value
         context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
       } else {
-        chunk?.arts?.forEach(
-          (artwork) => (visibleArtworks += drawArtwork(artwork, context) ? 1 : 0),
-        )
+        chunk?.arts?.forEach((artwork) => {
+          visibleArtworks += drawArtwork(artwork, context, now)
+        })
       }
     }
   }
   if (
     selectedLocation.value?.artwork?.is_expired ||
-    selectedLocation.value?.artwork?.collected_by
+    selectedLocation.value?.artwork?.collected_at
   ) {
     selectedLocation.value.artwork = null
   }
+  renderCount++
 }
 
-function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D) {
+/** Render artwork, can mutate it */
+function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: string) {
   if (isOutsideViewport(artwork.x, artwork.y)) {
-    return false
+    return 0
   }
   const { x, y } = getArtworkRelativeCoordinates(artwork)
-  const resolution = artwork.resolution
+  const resolution = artwork.pixels?.length || 1
   const pixelSize = zoomedArtSize.value / resolution
 
   if (artwork.is_expired) {
-    if (!artwork.particles?.length) return false
+    if (!artwork.particles?.length) return 0
     artwork.particles = updateParticles(artwork.particles, Date.now())
     renderParticles(artwork.particles ?? [], context, x, y, pixelSize)
-    return true
+    return 1
   }
-  if (artwork.collected_by) {
-    if (!artwork.collectionEffect) return false
+  if (artwork.collected_at) {
+    if (!artwork.collectionEffect) return 0
     artwork.collectionEffect = updateEffect(artwork.collectionEffect, Date.now()) || undefined
     const remaining = (1 - (artwork.collectionEffect?.progress ?? 1)) * resolution
     renderArtwork(artwork.pixels ?? [], context, x, y, resolution, remaining, pixelSize)
-    return true
+    return 1
+  }
+  if (artwork.expires_at < now) {
+    artwork.is_expired = true
+    artwork.particles = initializeDisintegrationParticles(artwork)
   }
   renderArtwork(artwork.pixels ?? [], context, x, y, resolution, resolution, pixelSize)
-  return true
+  return 1
 }
 
 let updateQueryParamsTimeout: number
@@ -410,8 +430,13 @@ function updateQueryParams() {
 function handleClickLocation(event: MouseEvent) {
   const { x, y } = getEventLocation(event)
   const coords = getCanvasCoordinates(x, y)
-  const c = CANVAS_SIZE / 2
-  if (coords.x < -c || coords.x >= c || coords.y < -c || coords.y >= c) {
+  const {
+    min_x = -Infinity,
+    max_x = Infinity,
+    min_y = -Infinity,
+    max_y = Infinity,
+  } = canvasStore.canvasConfig ?? {}
+  if (coords.x < min_x || coords.x > max_x || coords.y < min_y || coords.y > max_y) {
     return
   }
   const clickedArtwork = canvasStore.getArtworkAt(coords.x, coords.y)
@@ -544,6 +569,9 @@ onMounted(() => {
   }
   window.addEventListener('resize', resize)
   resize()
+
+  const { id } = route.params
+  canvasStore.loadCanvas(+id || 1)
   const { x, y, z } = route.query
   setLocation(+(x ?? ''), +(y ?? ''), z ? +z : undefined)
 
@@ -560,5 +588,12 @@ onMounted(() => {
     }
     window.removeEventListener('resize', resize)
   })
+})
+
+onBeforeRouteLeave(() => {
+  console.log('leaving route')
+  if (canvasStore.currentCanvasId) {
+    canvasStore.unsubscribeFromCanvas(canvasStore.currentCanvasId)
+  }
 })
 </script>

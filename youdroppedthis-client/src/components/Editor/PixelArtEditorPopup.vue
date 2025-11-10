@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-fit h-fit fixed text-neutral-200 border border-neutral-600 border-dashed pointer-events-none box-border font-mono"
+    class="w-fit h-fit fixed text-neutral-200 border border-neutral-600 border-dashed pointer-events-none box-border"
     :style="{ left: `${left}px`, top: `${top}px` }"
   >
     <div class="relative min-w-full">
