@@ -20,7 +20,7 @@
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
             <span class="size-5"><StatsIcon /></span>
-            Canvas stats
+            Canvas info
           </button>
           <button
             @click="isLocationPopupOpen = true"
@@ -93,10 +93,10 @@
   <div v-if="isOpen" class="fixed inset-0 bg-black opacity-30 z-30" @click="closeDrawer" />
 
   <SelectLocationPopup v-if="isLocationPopupOpen" @close="isLocationPopupOpen = false" />
-  <CanvasStatsPopup
-    v-if="showStats && canvasStore.canvasConfig"
+  <CanvasInfoPopup
+    v-if="showStats && canvasStore.canvasInfo"
     @close="showStats = false"
-    :canvas="canvasStore.canvasConfig"
+    :canvas="canvasStore.canvasInfo"
   />
   <InfoPopup v-if="showAbout" title="About" @close="showAbout = false">
     <p>YouDroppedThis - Drop Art, Find Treasures</p>
@@ -123,7 +123,7 @@ import CoinsIcon from '../Icons/CoinsIcon.vue'
 import InfoIcon from '../Icons/InfoIcon.vue'
 import MessageIcon from '../Icons/MessageIcon.vue'
 import SelectLocationPopup from '../Canvas/SelectLocationPopup.vue'
-import CanvasStatsPopup from '../Canvas/CanvasStatsPopup.vue'
+import CanvasInfoPopup from '../Canvas/CanvasInfoPopup.vue'
 import InfoPopup from './InfoPopup.vue'
 import DailyBonus from '../User/DailyBonusButton.vue'
 import UserCollection from '../User/UserCollection.vue'

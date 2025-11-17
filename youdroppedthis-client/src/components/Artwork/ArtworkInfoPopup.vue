@@ -13,14 +13,7 @@
         class="absolute bottom-full left-1/2 -translate-x-1/2 min-w-full box-content flex gap-4 justify-between pointer-events-auto bg-black/90 backdrop-blur-sm rounded-lg p-2 border border-neutral-600"
         @touchmove.prevent.passive
       >
-        <div class="flex gap-2 items-center">
-          <div v-if="profileLoading" class="bg-neutral-700 animate-pulse rounded-full size-6" />
-          <div v-else class="rounded-full bg-teal-800 size-6 text-white text-center">
-            {{ profile?.username.charAt(0) }}
-          </div>
-          <span v-if="profileLoading" class="bg-neutral-700 animate-pulse rounded-md w-32 h-4" />
-          <span v-else class="">{{ profile?.username }}</span>
-        </div>
+        <ProfileCard :user-id="artwork.user_id" />
         <div class="relative h-6">
           <button class="size-6 text-neutral-700 cursor-pointer peer">
             <TimeRemainingIcon :remaining="timeRemaining.p" />
@@ -57,8 +50,8 @@ import { artworkApi } from '@/services/api'
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import TimeRemainingIcon from '../Icons/TimeRemainingIcon.vue'
 import { getH_M_S } from '@/utils/date'
-import { useProfile } from '@/stores/profiles'
 import { useToast } from '@/composables/useToast'
+import ProfileCard from '../User/ProfileCard.vue'
 
 const toast = useToast()
 
@@ -71,8 +64,6 @@ const { top, left, size, artwork } = defineProps<{
   artwork: Artwork
 }>()
 
-const { profile, isLoading: profileLoading } = useProfile(artwork.user_id)
-
 const timeInfo = computed(() => {
   const expirationTime = new Date(artwork.expires_at).getTime()
   const totalTime = expirationTime - new Date(artwork.created_at).getTime()
@@ -82,7 +73,7 @@ const timeRemaining = ref({ p: 1, s: '' })
 
 async function collectArtwork() {
   if (!authStore.user) {
-    alert('Please log in to collect artwork')
+    toast.warning('Please log in to collect artwork')
     return
   }
   try {

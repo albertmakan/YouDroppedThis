@@ -1,56 +1,97 @@
 <template>
   <div class="fixed inset-0 flex items-center z-50 bg-black/50">
     <div
-      class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 p-4 w-fit border border-neutral-600"
+      class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 p-4 sm:w-fit w-full border border-neutral-600"
       @click.stop
     >
       <div class="flex w-full justify-between">
-        <div class="flex gap-2">
-          <div class="rounded-full bg-teal-800 size-6 text-white text-center">
-            {{ profile?.username?.charAt(0) }}
-          </div>
-          <span class="">{{ profile?.username }}</span>
-        </div>
+        <button class="flex gap-2 cursor-pointer items-center" @click="profileInfoOpen = true">
+          <span class="text-xl"><ProfilePicture :profile /></span>
+          <span>{{ profile?.username }}</span>
+        </button>
         <button @click="closeModal" class="cursor-pointer size-6"><XMarkIcon /></button>
       </div>
 
       <!-- Tab Navigation -->
       <div class="flex justify-center my-4 text-sm">
-        <div v-for="tab in tabs" class="flex-1">
-          <button
-            @click="setActiveTab(tab)"
-            :class="[
-              'inline-flex w-full items-center gap-2 cursor-pointer border-b-2 justify-center p-2 transition-all hover:text-neutral-200 ',
-              activeTab === tab ? 'border-current' : 'border-transparent text-neutral-400',
-            ]"
-          >
-            <span class="size-5">
-              <PaletteIcon v-if="tab === 'placed'" />
-              <CollectionIcon v-else />
-            </span>
-            <span class="capitalize">{{ tab }}</span>
-            <span class="text-xs text-neutral-400 bg-neutral-800 px-1 rounded-full">
-              {{ profile?.[`artworks_${tab}_count`] }}
-            </span>
-          </button>
+        <button
+          v-for="tab in tabs"
+          @click="setActiveTab(tab)"
+          :class="[
+            'inline-flex w-full items-center gap-2 cursor-pointer border-b-2 justify-center p-2 transition-all hover:text-neutral-200 ',
+            activeTab === tab ? 'border-current' : 'border-transparent text-neutral-400',
+          ]"
+        >
+          <span class="size-5">
+            <PaletteIcon v-if="tab === 'placed'" />
+            <CollectionIcon v-else />
+          </span>
+          <span class="capitalize sm:inline hidden">{{ tab }}</span>
+          <span class="text-xs text-neutral-400 bg-neutral-800 px-1 rounded-full">
+            {{ profile?.[`artworks_${tab}_count`] }}
+          </span>
+        </button>
+      </div>
+
+      <div class="relative">
+        <div
+          v-if="selectedArtwork"
+          class="absolute top-0 h-[calc(100vh-160px)] w-full bg-black/50 backdrop-blur-lg z-10 overflow-y-auto"
+          @click="selectedArtwork = null"
+        >
+          <div class="m-auto mt-8 w-4/5" @click.stop>
+            <div class="border border-neutral-600 rounded-t-lg bg-black p-2 flex justify-between">
+              <ProfileCard :user-id="selectedArtwork.user_id" />
+              <router-link
+                class="size-6 cursor-pointer shrink-0"
+                :to="`/c/${selectedArtwork.canvas_id}?x=${selectedArtwork.x}&y=${selectedArtwork.y}&selected`"
+              >
+                <LocationIcon />
+              </router-link>
+            </div>
+            <div class="" :style="{ background: CANVAS_BACKGROUND }">
+              <ArtworkThumbnail :artwork="selectedArtwork" />
+            </div>
+            <div
+              class="border border-neutral-600 rounded-b-lg bg-black p-2 text-xs text-neutral-400"
+            >
+              {{ getArtworkStatus(selectedArtwork) }}
+              <template v-if="selectedArtwork.collected_by">
+                by
+                <span v-if="selectedArtwork.collected_by === authStore.user?.id">You</span>
+                <ProfileCard v-else :user-id="selectedArtwork.collected_by" />
+              </template>
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="profileInfoOpen"
+          class="absolute top-0 h-[calc(100vh-160px)] w-full bg-black/50 backdrop-blur-2xl z-10 overflow-y-auto p-4"
+        >
+          <div class="text-right">
+            <button @click="profileInfoOpen = false" class="cursor-pointer size-6">
+              <XMarkIcon />
+            </button>
+          </div>
+          {{ profile?.bio }}
         </div>
       </div>
 
       <!-- Content Area -->
-      <div class="h-[calc(100vh-160px)] max-w-80 overflow-y-auto">
+      <div class="h-[calc(100vh-160px)] overflow-y-scroll">
         <!-- Loading state -->
         <div v-if="isLoading && currentArtworks.length === 0" class="grid grid-cols-4 gap-1">
           <div
             v-for="i in ITEMS_PER_PAGE"
             :key="i"
-            class="bg-neutral-700 animate-pulse aspect-square"
+            class="bg-neutral-800 animate-pulse aspect-square sm:w-32"
           />
         </div>
 
         <!-- Empty state -->
-        <div v-else-if="currentArtworks.length === 0" class="text-center my-14">
+        <div v-else-if="currentArtworks.length === 0" class="text-center my-14 mx-auto max-w-80">
           <template v-if="activeTab === 'placed'">
-            <div class="mx-24 mb-4 text-neutral-400">
+            <div class="max-w-32 mx-auto mb-4 text-neutral-400">
               <PaletteIcon />
             </div>
             <h3 class="text-xl my-2">No artworks created yet</h3>
@@ -59,7 +100,7 @@
             </p>
           </template>
           <template v-else>
-            <div class="mx-24 mb-4 text-neutral-400">
+            <div class="max-w-32 mx-auto mb-4 text-neutral-400">
               <CollectionIcon />
             </div>
             <h3 class="text-xl my-2">No artworks collected yet</h3>
@@ -70,43 +111,27 @@
         </div>
 
         <!-- Artworks Grid -->
-        <div v-else class="grid grid-cols-4 gap-1" :style="{ background: CANVAS_BACKGROUND }">
+        <div v-else class="grid grid-cols-4 gap-1">
           <div
             v-for="artwork in currentArtworks"
             :key="artwork.id"
-            class="relative aspect-square overflow-hidden cursor-pointer"
+            class="aspect-square overflow-hidden cursor-pointer sm:w-32"
+            :style="{ background: CANVAS_BACKGROUND }"
             tabindex="0"
-            @click="openArtworkDetail(artwork)"
+            @click="selectedArtwork = artwork"
           >
             <ArtworkThumbnail
               :artwork="artwork"
               :show-status="true"
               :show-timer="activeTab === 'placed'"
             />
-
-            <!-- Overlay info -->
-            <div
-              class="absolute inset-0 opacity-0 text-white bg-black/50 hover:opacity-100 transition-all"
-            >
-              <div class="text-xs font-semibold- m-2-">
-                <span
-                  v-if="activeTab === 'placed'"
-                  class="px-1 py-0.5 bg-neutral-600/50 rounded-lg"
-                >
-                  {{ getArtworkStatus(artwork) }}
-                </span>
-                <span v-else class="px-1 py-0.5 bg-neutral-600/50 rounded-lg">
-                  Collected {{ formatRelativeTime(artwork.collected_at) }}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
 
         <!-- Load More Button -->
         <div
           v-if="hasMore[activeTab].value && currentArtworks.length > 0"
-          class="mt-1 text-center text-sm"
+          class="mt-1 p-2 text-center text-sm"
         >
           <button
             @click="loadMore"
@@ -131,13 +156,15 @@ import { useAuthStore } from '@/stores/auth'
 import ArtworkThumbnail from '../Artwork/ArtworkThumbnail.vue'
 import type { Artwork } from '@/shared/types'
 import { formatRelativeTime, getH_M_S } from '@/utils/date'
-import { useRouter } from 'vue-router'
 import { artworkApi } from '@/services/api'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import PaletteIcon from '../Icons/PaletteIcon.vue'
 import CollectionIcon from '../Icons/CollectionIcon.vue'
 import { useProfile } from '@/stores/profiles'
+import LocationIcon from '../Icons/LocationIcon.vue'
+import ProfilePicture from './ProfilePicture.vue'
+import ProfileCard from './ProfileCard.vue'
 
 const { userId } = defineProps<{
   userId: string
@@ -151,17 +178,15 @@ function closeModal() {
   emit('close')
 }
 
-const router = useRouter()
-
 const authStore = useAuthStore()
-const { profile, isLoading: profileLoading } = useProfile(userId)
+const { profile, isLoading: profileLoading, refresh } = useProfile(userId)
 
 const tabs = ['placed', 'collected'] as const
 const activeTab = ref<'placed' | 'collected'>('placed')
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
-const selectedArtworkId = ref<number | null>(null)
-const showDetailModal = ref(false)
+const selectedArtwork = ref<Artwork | null>(null)
+const profileInfoOpen = ref(false)
 
 const ITEMS_PER_PAGE = 16
 
@@ -172,6 +197,7 @@ const hasMore = { placed: ref(true), collected: ref(true) }
 const currentArtworks = computed(() => artworks[activeTab.value].value)
 
 async function setActiveTab(tab: 'placed' | 'collected') {
+  selectedArtwork.value = null
   if (activeTab.value === tab) return
 
   activeTab.value = tab
@@ -222,23 +248,16 @@ async function loadMore() {
   await loadArtworks(false)
 }
 
-function openArtworkDetail(artwork: Artwork) {
-  selectedArtworkId.value = artwork.id
-  showDetailModal.value = true
-  if (!artwork.is_expired && !artwork.collected_by)
-    router.push({ query: { x: artwork.x, y: artwork.y } })
-}
-
-function getArtworkStatus(artwork: Artwork): string {
+function getArtworkStatus(artwork: Artwork) {
   if (artwork.collected_by) {
-    return 'Collected'
+    return 'Collected ' + formatRelativeTime(artwork.collected_at)
   }
   const timeRemaining = new Date(artwork.expires_at).getTime() - Date.now()
   if (timeRemaining > 0) {
     const { hours, minutes } = getH_M_S(timeRemaining)
     return (hours > 0 ? `${hours}h ` : '') + `${minutes}m left`
   }
-  return 'Expired'
+  return 'Expired ' + formatRelativeTime(artwork.expires_at)
 }
 
 // Lifecycle

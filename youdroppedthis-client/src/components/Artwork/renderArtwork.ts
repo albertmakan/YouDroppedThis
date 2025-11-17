@@ -2,35 +2,25 @@ import type { Particle } from '@/utils/physics'
 
 export function renderArtwork(
   pixels: Readonly<Readonly<string[]>[]>,
-  context: CanvasRenderingContext2D,
-  offsetX: number,
-  offsetY: number,
-  width: number,
-  height: number,
-  pixelSize: number,
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  offsetX: number = 0,
+  offsetY: number = 0,
+  pixelSize: number = 1,
 ) {
-  const heightRemaining = height % 1
-  height = Math.floor(height)
-  for (let pixelY = 0; pixelY < height; pixelY++) {
+  let filledCount = 0
+  for (let pixelY = 0; pixelY < pixels.length; pixelY++) {
     const y = offsetY + pixelY * pixelSize
-    for (let pixelX = 0; pixelX < width; pixelX++) {
-      const x = offsetX + pixelX * pixelSize
-      const w = pixelSize + (pixels[pixelY][pixelX + 1] ? 1 : 0)
-      const h = pixelSize + (pixels[pixelY + 1]?.[pixelX] ? 1 : 0)
-      context!.fillStyle = pixels[pixelY][pixelX] || 'transparent'
-      context!.fillRect(x, y, w, h)
+    for (let pixelX = 0; pixelX < pixels[pixelY].length; pixelX++) {
+      const x = Math.floor(offsetX + pixelX * pixelSize)
+      const fill = pixels[pixelY][pixelX]
+      if (fill) {
+        context.fillStyle = fill
+        context.fillRect(x, y, pixelSize, pixelSize)
+        filledCount += 1
+      }
     }
   }
-  if (heightRemaining) {
-    const y = offsetY + height * pixelSize
-    const h = pixelSize * heightRemaining
-    for (let pixelX = 0; pixelX < width; pixelX++) {
-      const x = offsetX + pixelX * pixelSize
-      const w = pixelSize + (pixels[height][pixelX + 1] ? 1 : 0)
-      context!.fillStyle = pixels[height][pixelX] || 'transparent'
-      context!.fillRect(x, y, w, h)
-    }
-  }
+  return filledCount
 }
 
 export function renderParticles(

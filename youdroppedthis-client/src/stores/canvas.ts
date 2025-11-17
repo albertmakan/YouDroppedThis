@@ -1,81 +1,76 @@
 import { defineStore } from 'pinia'
-import { computed, ref, shallowRef } from 'vue'
+import { ref, shallowRef } from 'vue'
 import type { Artwork, CanvasInfo } from '@/shared/types'
 import { canvasApi, parsePixelData } from '@/services/api'
 import { supabase } from '@/services/supabase'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 
-// export const CANVAS_SIZE = 1024
 export const CHUNK_SIZE = 16
 export const ART_SIZE = 64
 export const MIN_ZOOM = 0.5
 export const MAX_ZOOM = 10
 export const CANVAS_BACKGROUND = '#18181b'
 export const GRID_COLOR = '#3f3f46'
-
-type CanvasData = {
-  config: CanvasInfo
-  chunks: Map<string, { arts?: Artwork[]; isLoading: boolean }>
-  isLoading: boolean
-  channel?: RealtimeChannel
-}
+export const DEFAULT_PALETTE = [
+  '#000000',
+  '#FFFFFF',
+  '#FF0000',
+  '#00FF00',
+  '#0000FF',
+  '#FFFF00',
+  '#FF00FF',
+  '#00FFFF',
+  '#808080',
+  '#800000',
+  '#808000',
+  '#008000',
+  '#800080',
+  '#008080',
+  '#000080',
+  '#FFA500',
+  '#FFC0CB',
+  '#A52A2A',
+  '#FFFFE0',
+  '#ADD8E6',
+]
 
 export const useCanvasStore = defineStore('canvas', () => {
-  const canvases = shallowRef<Map<number, CanvasData>>(new Map())
-
   const currentCanvasId = ref<number | null>(null)
+  const canvasInfo = ref<CanvasInfo | null>(null)
+  const chunks = shallowRef<Map<string, { arts?: Artwork[]; isLoading: boolean }>>(new Map())
+  const subscription = ref<RealtimeChannel | null>(null)
+  const realtimeSubscribeState = ref('')
 
-  const currentCanvas = computed(() =>
-    currentCanvasId.value ? canvases.value.get(currentCanvasId.value) : null,
-  )
+  async function switchCanvas(canvasId: number) {
+    if (currentCanvasId.value === canvasId) return
 
-  const canvasChunks = computed(() => currentCanvas.value?.chunks)
-  const canvasConfig = computed(() => currentCanvas.value?.config)
-
-  async function loadCanvas(canvasId: number) {
-    if (canvases.value.has(canvasId)) {
-      currentCanvasId.value = canvasId
-      subscribeToCanvas(canvasId)
-      return
-    }
-
-    const config = await canvasApi.getCanvasInfo(canvasId)
-
-    canvases.value.set(canvasId, { config, chunks: new Map(), isLoading: false })
+    await unsubscribeFromCanvas()
+    chunks.value.clear()
 
     currentCanvasId.value = canvasId
-
+    canvasInfo.value = await canvasApi.getCanvasInfo(canvasId)
     subscribeToCanvas(canvasId)
   }
 
   function subscribeToCanvas(canvasId: number) {
-    const canvas = canvases.value.get(canvasId)
-    if (!canvas) return
-
     const channel = supabase.channel(`canvas:${canvasId}`, { config: { private: true } })
 
     channel
-      .on('broadcast', { event: '*' }, ({ payload, event }) =>
-        handleRealtimeEvent(canvasId, event, payload),
-      )
-      .subscribe(console.log)
+      .on('broadcast', { event: '*' }, ({ payload, event }) => handleRealtimeEvent(event, payload))
+      .subscribe((state) => (realtimeSubscribeState.value = state))
 
-    canvas.channel = channel
+    subscription.value = channel
   }
 
-  function unsubscribeFromCanvas(canvasId: number) {
-    const canvas = canvases.value.get(canvasId)
-    if (canvas?.channel) {
-      canvas.channel.unsubscribe()
-      canvas.channel = undefined
+  async function unsubscribeFromCanvas() {
+    if (subscription.value) {
+      await subscription.value.unsubscribe()
+      subscription.value = null
     }
   }
 
-  function handleRealtimeEvent(canvasId: number, event: string, payload: any) {
-    console.log(canvasId, payload)
-    const canvas = canvases.value.get(canvasId)
-    if (!canvas) return
-
+  function handleRealtimeEvent(event: string, payload: any) {
+    console.log(payload)
     if (event === 'placed') {
       const artwork = payload as Artwork
       artwork.pixels = parsePixelData(artwork.pixel_data)
@@ -96,21 +91,13 @@ export const useCanvasStore = defineStore('canvas', () => {
     }
   }
 
-  function cleanup() {
-    canvases.value.forEach((_, canvasId) => {
-      unsubscribeFromCanvas(canvasId)
-    })
-    canvases.value.clear()
-  }
-
   function getChunkKey(cx: number, cy: number) {
     return `${cx},${cy}`
   }
 
   async function loadChunk(cx: number, cy: number, zoom: number) {
     const key = getChunkKey(cx, cy)
-    canvasChunks.value?.set(key, { isLoading: true })
-
+    chunks.value?.set(key, { isLoading: true })
     try {
       const response = await canvasApi.getArtworksInArea(1, {
         minX: cx * CHUNK_SIZE,
@@ -118,14 +105,14 @@ export const useCanvasStore = defineStore('canvas', () => {
         minY: cy * CHUNK_SIZE,
         maxY: (cy + 1) * CHUNK_SIZE,
       })
-      canvasChunks.value?.set(key, { arts: response.artworks, isLoading: false })
+      chunks.value?.set(key, { arts: response.artworks, isLoading: false })
     } catch (error) {
       console.error('Failed to load chunk:', error)
     }
   }
 
   function getChunk(cx: number, cy: number) {
-    return canvasChunks.value?.get(getChunkKey(cx, cy))
+    return chunks.value?.get(getChunkKey(cx, cy))
   }
 
   const callbacks = ref<{
@@ -145,8 +132,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   return {
     currentCanvasId,
-    canvasConfig,
-    loadCanvas,
+    canvasInfo,
+    realtimeSubscribeState,
+    switchCanvas,
     getChunk,
     loadChunk,
     getArtworkAt,

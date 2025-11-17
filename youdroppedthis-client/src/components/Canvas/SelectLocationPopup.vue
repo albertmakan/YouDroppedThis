@@ -15,8 +15,8 @@
             <input
               type="number"
               v-model="location.x"
-              :min="canvasStore.canvasConfig?.min_x"
-              :max="canvasStore.canvasConfig?.max_x"
+              :min="canvasStore.canvasInfo?.min_x"
+              :max="canvasStore.canvasInfo?.max_x"
               class="bg-neutral-900 rounded-md p-1"
             />
           </label>
@@ -26,8 +26,8 @@
               type="number"
               v-model="location.y"
               name="y"
-              :min="canvasStore.canvasConfig?.min_y"
-              :max="canvasStore.canvasConfig?.max_y"
+              :min="canvasStore.canvasInfo?.min_y"
+              :max="canvasStore.canvasInfo?.max_y"
               class="bg-neutral-900 rounded-md p-1"
             />
           </label>
@@ -61,10 +61,10 @@ function closeModal() {
   emit('close')
 }
 
-const location = ref({ x: 0, y: 0 })
+const location = ref({ x: 0, y: 0, selected: '' })
 
 function handleJump() {
   emit('close')
-  router.replace({ query: location.value })
+  router.push({ query: location.value })
 }
 </script>

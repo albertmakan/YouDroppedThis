@@ -2,29 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import { solvePostfix, tokenize, tokensToPostfix } from '@/utils/parser'
 
-// Color palette for pixel art - move to canvas config
-export const DEFAULT_PALETTE = [
-  '#000000',
-  '#FFFFFF',
-  '#FF0000',
-  '#00FF00',
-  '#0000FF',
-  '#FFFF00',
-  '#FF00FF',
-  '#00FFFF',
-  '#808080',
-  '#800000',
-  '#808000',
-  '#008000',
-  '#800080',
-  '#008080',
-  '#000080',
-  '#FFA500',
-  '#FFC0CB',
-  '#A52A2A',
-  '#FFFFE0',
-  '#ADD8E6',
-]
 const emptyPixel = ''
 
 export const useEditorStore = defineStore('editor', () => {
@@ -32,9 +9,9 @@ export const useEditorStore = defineStore('editor', () => {
   const location = ref<{ x: number; y: number } | null>(null)
   const selectedColor = ref('#ffffff')
   const pixels = ref(Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => emptyPixel)))
+  const offscreenCanvas = new OffscreenCanvas(64, 64)
   const tool = ref<'pen' | 'eraser' | 'fill' | 'code' | null>('pen')
   const expression = ref('')
-  const palette = ref(DEFAULT_PALETTE)
 
   const history = ref<{ pixels: string[][] }[]>([{ pixels: pixels.value.map((row) => [...row]) }])
   const historyStep = ref(0)
@@ -44,7 +21,6 @@ export const useEditorStore = defineStore('editor', () => {
   const context = {
     x: 0,
     y: 0,
-    palette: DEFAULT_PALETTE,
     pixel: (x: number, y: number) => pixels.value[y]?.[x] ?? emptyPixel,
   }
 
@@ -63,7 +39,6 @@ export const useEditorStore = defineStore('editor', () => {
       pixels.value = newPixels
     },
   })
-  const pixelCount = computed(() => resolution.value * resolution.value)
 
   function saveState() {
     // Remove any states after current step (for redo functionality)
@@ -136,7 +111,8 @@ export const useEditorStore = defineStore('editor', () => {
         context.x = x
         context.y = y
         const color = solvePostfix(postfix, context)
-        newPixels[y][x] = context.palette.includes(color) ? color : emptyPixel
+        newPixels[y][x] =
+          typeof color === 'string' && color.match(/^(#[0-9A-Fa-f]{6}|)$/) ? color : emptyPixel
       }
     }
     pixels.value = newPixels
@@ -165,7 +141,6 @@ export const useEditorStore = defineStore('editor', () => {
     pixels,
     tool,
     expression,
-    palette,
     context: readonly(context),
     setPixel,
     clearCanvas,
@@ -176,5 +151,6 @@ export const useEditorStore = defineStore('editor', () => {
     canRedo,
     undo,
     redo,
+    offscreenCanvas,
   }
 })

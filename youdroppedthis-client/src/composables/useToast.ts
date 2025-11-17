@@ -17,22 +17,7 @@ export function useToast() {
     duration: number = 3000,
   ) {
     const id = ++toastIdCounter
-
-    const toast: Toast = {
-      id,
-      message,
-      type,
-      duration,
-    }
-
-    toasts.value.push(toast)
-
-    if (duration > 0) {
-      setTimeout(() => {
-        remove(id)
-      }, duration)
-    }
-
+    toasts.value.push({ id, message, type, duration })
     return id
   }
 

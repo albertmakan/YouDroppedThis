@@ -8,4 +8,5 @@ export default {
   ceil: Math.ceil,
   floor: Math.floor,
   random: Math.random,
+  mod: (n: number, m: number) => ((n % m) + m) % m,
 }

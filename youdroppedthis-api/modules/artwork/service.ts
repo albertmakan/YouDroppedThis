@@ -131,6 +131,7 @@ export class ArtworkService {
       SELECT *
       FROM app.artworks
       WHERE user_id = ${userId}
+      ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
 
     return artworkResults.rows;
@@ -147,6 +148,7 @@ export class ArtworkService {
       SELECT *
       FROM app.artworks
       WHERE collected_by = ${userId}
+      ORDER BY collected_at DESC
       LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
 
     return artworkResults.rows;

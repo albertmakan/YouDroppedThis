@@ -26,6 +26,18 @@
 }
 
 @layer components {
+  .error {
+    @apply text-red-500;
+  }
+  .success {
+    @apply text-green-500;
+  }
+  .info {
+    @apply text-blue-500;
+  }
+  .warning {
+    @apply text-yellow-500;
+  }
 }
 
 /* Custom scrollbar */
@@ -44,12 +56,4 @@
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-neutral-600;
-}
-
-/* Canvas specific styles */
-.pixel {
-  image-rendering: -moz-crisp-edges;
-  image-rendering: -webkit-crisp-edges;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
 }

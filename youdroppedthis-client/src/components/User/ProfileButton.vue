@@ -1,17 +1,15 @@
 <template>
   <template v-if="authStore.isAuthenticated && authStore.user">
     <div class="relative">
-      <button class="peer rounded-full bg-teal-800 size-8 text-2xl text-white cursor-pointer">
-        {{ authStore.user.username.charAt(0) }}
+      <button class="peer cursor-pointer text-xl">
+        <ProfilePicture :profile="authStore.user" />
       </button>
       <div
         class="peer-focus:block hidden active:block focus:block absolute right-0 top-full bg-black rounded-lg w-fit text-neutral-200 shadow-md border border-neutral-600 mt-1"
         tabindex="0"
       >
         <div class="flex gap-3 items-center p-3 border-b border-neutral-600">
-          <div class="rounded-full bg-teal-800 size-8 text-white text-center text-2xl">
-            {{ authStore.user.username?.charAt(0) }}
-          </div>
+          <span class="text-2xl"><ProfilePicture :profile="authStore.user" /></span>
           <div>
             <div class="h-4">{{ authStore.user.username }}</div>
             <span class="text-xs text-neutral-400">{{ authStore.user.email }}</span>
@@ -51,6 +49,7 @@ import AuthModal from '@/components/User/Auth.vue'
 import { ref } from 'vue'
 import SettingsIcon from '../Icons/SettingsIcon.vue'
 import LogoutIcon from '../Icons/LogoutIcon.vue'
+import ProfilePicture from './ProfilePicture.vue'
 
 const authStore = useAuthStore()
 

@@ -29,6 +29,7 @@
             @change="editorStore.saveState"
             class="bg-neutral-900 p-1 rounded-md cursor-pointer hover:bg-neutral-800 mx-2 pointer-events-auto"
           >
+            <option value="8">8 x 8</option>
             <option value="16">16 x 16</option>
             <option value="32">32 x 32</option>
             <option value="64">64 x 64</option>
@@ -128,6 +129,7 @@
       @contextmenu.prevent
       @wheel.prevent="handleWheel"
       :class="{ 'pointer-events-none': !editorStore.tool, 'pointer-events-auto': editorStore.tool }"
+      style="image-rendering: pixelated"
     />
     <div class="relative min-w-full">
       <div
@@ -147,7 +149,7 @@
             />
           </div>
           <button
-            v-for="color in editorStore.palette"
+            v-for="color in palette"
             :key="color"
             :class="[
               'w-6 h-6 rounded-md cursor-pointer',
@@ -160,7 +162,7 @@
         <div class="flex justify-center gap-4">
           <button
             @click="done"
-            :disabled="editorStore.tool === 'code'"
+            :disabled="editorStore.tool === 'code' || !isFilledEnough"
             class="border-current border disabled:opacity-50 rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
           >
             Drop
@@ -195,9 +197,14 @@ const tools = [
   { name: 'eraser', icon: EraseIcon },
   { name: 'fill', icon: FillIcon },
   { name: 'code', icon: SparkleIcon },
-] as const
+] as const //cursor-custom?, save in localstorage
 
-const { top, left, size } = defineProps<{ top: number; left: number; size: number }>()
+const { top, left, size, palette } = defineProps<{
+  top: number
+  left: number
+  size: number
+  palette: string[]
+}>()
 const emit = defineEmits<{
   close: []
   done: []
@@ -218,36 +225,38 @@ function handleWheel(event: WheelEvent) {
 
 const editorLayout = ref<'h' | 'v'>('v')
 const showGrid = ref(true)
-// Drawing state
 const isDrawing = ref(false)
 const pixelSize = computed(() => size / editorStore.resolution)
+
+const coloredPixelCount = ref(0)
+const isFilledEnough = computed(
+  () => coloredPixelCount.value >= (editorStore.resolution * editorStore.resolution) / 8,
+)
 
 function drawCanvas() {
   if (!pixelCanvas.value) return
   const ctx = pixelCanvas.value.getContext('2d')
   if (!ctx) return
-
-  // Clear canvas
-  ctx.clearRect(0, 0, pixelCanvas.value.width, pixelCanvas.value.height)
-  // Draw pixels
   const resolution = editorStore.resolution
-  renderArtwork(editorStore.pixels, ctx, 0, 0, resolution, resolution, pixelSize.value)
-  // Draw grid
+  const offscreenCtx = editorStore.offscreenCanvas.getContext('2d')!
+  offscreenCtx.clearRect(0, 0, offscreenCtx.canvas.width, offscreenCtx.canvas.height)
+  coloredPixelCount.value = renderArtwork(editorStore.pixels, offscreenCtx, 0, 0, 64 / resolution)
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(editorStore.offscreenCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height)
   if (showGrid.value) {
     ctx.strokeStyle = GRID_COLOR
     ctx.lineWidth = 1
-    // Vertical lines
     for (let x = 0; x <= resolution; x++) {
       ctx.beginPath()
       ctx.moveTo(x * pixelSize.value, 0)
-      ctx.lineTo(x * pixelSize.value, resolution * pixelSize.value)
+      ctx.lineTo(x * pixelSize.value, size)
       ctx.stroke()
     }
-    // Horizontal lines
     for (let y = 0; y <= resolution; y++) {
       ctx.beginPath()
       ctx.moveTo(0, y * pixelSize.value)
-      ctx.lineTo(resolution * pixelSize.value, y * pixelSize.value)
+      ctx.lineTo(size, y * pixelSize.value)
       ctx.stroke()
     }
   }

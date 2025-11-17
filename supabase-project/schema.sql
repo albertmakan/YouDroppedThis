@@ -407,6 +407,12 @@ ALTER TABLE "app"."transactions" ENABLE ROW LEVEL SECURITY;
 
 
 
+alter policy "authenticated can receive broadcasts"
+on "realtime"."messages"
+to anon, authenticated
+using (true);
+
+
 SELECT cron.schedule('mark-expired', '* * * * *', 'SELECT app.expire_artworks()');
 
 RESET ALL;

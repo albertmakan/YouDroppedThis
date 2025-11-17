@@ -19,11 +19,12 @@
         class="text-xs backdrop-blur-xl text-neutral-200 bg-black/50 p-1 rounded-md"
       >
         <div>
-          📍 Center: ({{ Math.floor((bounds.x1 + bounds.x2) / 2) }},
-          {{ Math.floor((bounds.y1 + bounds.y2) / 2) }})
+          📍 Center: ({{ Math.floor((viewBounds.x1 + viewBounds.x2) / 2) }},
+          {{ Math.floor((viewBounds.y1 + viewBounds.y2) / 2) }})
         </div>
         <div>
-          📐 Bounds: ({{ bounds.x1 }}, {{ bounds.y1 }}) – ({{ bounds.x2 }}, {{ bounds.y2 }})
+          📐 Bounds: ({{ viewBounds.x1 }}, {{ viewBounds.y1 }}) – ({{ viewBounds.x2 }},
+          {{ viewBounds.y2 }})
         </div>
         <div>
           🔍 Zoom: {{ Math.round(zoom * 100) }}%
@@ -32,13 +33,14 @@
         <div>🎨 Visible artworks: {{ visibleArtworks }}</div>
         <div>🧩 Chunks: {{ (chunks.cx2 - chunks.cx1 + 1) * (chunks.cy2 - chunks.cy1 + 1) }}</div>
         <div>⚡ Performance: {{ Math.floor(fps) }}fps</div>
+        <div>🔌 Realtime: {{ canvasStore.realtimeSubscribeState }}</div>
       </div>
       <button
         @click="showInfo = !showInfo"
         class="rounded-full px-2 py-1 border border-neutral-600 backdrop-blur-xl text-neutral-200 text-xs bg-black/50 cursor-pointer"
       >
-        📍({{ Math.floor((bounds.x1 + bounds.x2) / 2) }},
-        {{ Math.floor((bounds.y1 + bounds.y2) / 2) }})
+        📍({{ Math.floor((viewBounds.x1 + viewBounds.x2) / 2) }},
+        {{ Math.floor((viewBounds.y1 + viewBounds.y2) / 2) }})
         <span class="text-neutral-500">•</span>
         🔍{{ Math.round(zoom * 100) }}%
         <span class="text-neutral-500">•</span>
@@ -83,6 +85,7 @@
       @click.prevent
       @dblclick.prevent="handleClickLocation"
       :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
+      style="image-rendering: pixelated"
     />
     <div
       v-if="locationPreview && !selectedLocation?.artwork"
@@ -126,6 +129,7 @@
       :top="editorRelativeLocation.y"
       :left="editorRelativeLocation.x"
       :size="zoomedArtSize"
+      :palette="canvasStore.canvasInfo?.palette ?? DEFAULT_PALETTE"
       @wheel="handleWheel"
     />
     <Drawer ref="drawer" />
@@ -133,11 +137,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, useTemplateRef } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, useTemplateRef, nextTick } from 'vue'
 import {
   ART_SIZE,
   CANVAS_BACKGROUND,
   CHUNK_SIZE,
+  DEFAULT_PALETTE,
   GRID_COLOR,
   initializeDisintegrationParticles,
   MAX_ZOOM,
@@ -160,6 +165,8 @@ import Drawer from '../Layout/Drawer.vue'
 import MenuIcon from '../Icons/MenuIcon.vue'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { useToast } from '@/composables/useToast'
+import f from '@/utils/builtInFunctions'
+import type { AxiosError } from 'axios'
 
 const toast = useToast()
 
@@ -189,12 +196,22 @@ const initialPinchDistance = ref<number | null>(null)
 const showInfo = ref(false)
 const editorLocationTaken = ref(false)
 
-const bounds = computed(() => ({
+const viewBounds = computed(() => ({
   x1: Math.floor(viewX.value / zoomedArtSize.value),
   x2: Math.floor((viewX.value + viewportWidth.value) / zoomedArtSize.value),
   y1: Math.floor(viewY.value / zoomedArtSize.value),
   y2: Math.floor((viewY.value + viewportHeight.value) / zoomedArtSize.value),
 }))
+
+const canvasBounds = computed(() => {
+  const {
+    min_x = -Infinity,
+    max_x = Infinity,
+    min_y = -Infinity,
+    max_y = Infinity,
+  } = canvasStore.canvasInfo ?? {}
+  return { min_x, max_x, min_y, max_y }
+})
 
 // Selection state
 const selectedLocation = ref<{ x: number; y: number; artwork: Artwork | null } | null>(null)
@@ -211,35 +228,31 @@ const editorRelativeLocation = computed(
 
 watch(
   () => route.query,
-  ({ x, y, z }) => {
-    setLocation(+(x ?? ''), +(y ?? ''), z ? +z : undefined)
+  ({ x: qx, y: qy, z: qz, selected }) => {
+    const x = +(qx ?? '')
+    const y = +(qy ?? '')
+    const z = qz ? +qz : undefined
+    setLocation(x, y, z)
+    if (selected !== undefined) setSelectedLocation({ x, y })
   },
   { deep: true },
 )
 watch(
   () => route.params.id,
   (id) => {
-    console.log(id)
-    canvasStore.loadCanvas(+id || 1)
+    canvasStore.switchCanvas(+id || 1)
   },
 )
 
 const chunks = computed(() => {
-  const {
-    min_x = -Infinity,
-    max_x = Infinity,
-    min_y = -Infinity,
-    max_y = Infinity,
-  } = canvasStore.canvasConfig ?? {}
-  const cx1 = Math.max(Math.floor(viewX.value / zoomedChunkSize.value), min_x / CHUNK_SIZE)
-  const cx2 = Math.min(
-    Math.floor((viewX.value + viewportWidth.value) / zoomedChunkSize.value),
-    max_x / CHUNK_SIZE,
+  const { min_x, max_x, min_y, max_y } = canvasBounds.value
+  const cx1 = Math.floor(Math.max(viewX.value / zoomedChunkSize.value, min_x / CHUNK_SIZE))
+  const cx2 = Math.floor(
+    Math.min((viewX.value + viewportWidth.value) / zoomedChunkSize.value, max_x / CHUNK_SIZE),
   )
-  const cy1 = Math.max(Math.floor(viewY.value / zoomedChunkSize.value), min_y / CHUNK_SIZE)
-  const cy2 = Math.min(
-    Math.floor((viewY.value + viewportHeight.value) / zoomedChunkSize.value),
-    max_y / CHUNK_SIZE,
+  const cy1 = Math.floor(Math.max(viewY.value / zoomedChunkSize.value, min_y / CHUNK_SIZE))
+  const cy2 = Math.floor(
+    Math.min((viewY.value + viewportHeight.value) / zoomedChunkSize.value, max_y / CHUNK_SIZE),
   )
   for (let cx = cx1; cx <= cx2; cx++) {
     for (let cy = cy1; cy <= cy2; cy++) {
@@ -280,7 +293,7 @@ function getEventLocation(e: MouseEvent | TouchEvent) {
 }
 
 function isOutsideViewport(x: number, y: number) {
-  const { x1, x2, y1, y2 } = bounds.value
+  const { x1, x2, y1, y2 } = viewBounds.value
   return x < x1 || x > x2 || y < y1 || y > y2
 }
 
@@ -306,7 +319,7 @@ function openEditorAtNewLocation() {
 
 async function placeArtwork() {
   if (!authStore.user) {
-    alert('Please log in to place artwork')
+    toast.warning('Please log in to place artwork')
     return
   }
   if (!canvasStore.currentCanvasId || !editorStore.location) {
@@ -322,37 +335,60 @@ async function placeArtwork() {
     editorStore.clearCanvas()
     authStore.setProfileInfo(response.userProfile)
   } catch (error) {
-    toast.error('Failed to place artwork: ' + JSON.stringify(error))
+    toast.error(
+      'Failed to place artwork: ' + JSON.stringify((error as AxiosError).response?.data, null, 4),
+    )
   }
 }
 
 // Canvas rendering
+
+const checkeredRes = 4
+const oobPatternCanvas = new OffscreenCanvas(checkeredRes, checkeredRes)
+const oobPatternCtx = oobPatternCanvas.getContext('2d')
+oobPatternCtx!.fillStyle = GRID_COLOR
+for (let si = 0; si < checkeredRes; si++) {
+  for (let sj = 0; sj < checkeredRes; sj++) {
+    if ((si + sj) % 2 === 0) oobPatternCtx!.fillRect(si, sj, 1, 1)
+  }
+}
+
 let visibleArtworks = 0,
   renderCount = 0
+
 function renderCanvas() {
   if (!ctx.value || !canvasRef.value) return
   const canvas = canvasRef.value
   const context = ctx.value
 
   // Clear canvas
-  context.fillStyle = canvasStore.canvasConfig?.background_color || CANVAS_BACKGROUND
+  context.fillStyle = canvasStore.canvasInfo?.background_color || CANVAS_BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   // Draw grid
-  if (zoom.value > 0.5) {
-    context.strokeStyle = GRID_COLOR
-    context.lineWidth = 2
-    const gridSize = zoomedArtSize.value
-    const offsetX = -viewX.value % gridSize
-    const offsetY = -viewY.value % gridSize
-    for (let y = offsetY; y < canvas.height; y += gridSize) {
-      for (let x = offsetX; x < canvas.width; x += gridSize) {
+  const gridSize = zoomedArtSize.value
+  const { min_x, max_x, min_y, max_y } = canvasBounds.value
+  const { x1, y1 } = viewBounds.value
+  context.strokeStyle = GRID_COLOR
+  context.fillStyle = GRID_COLOR
+  context.lineWidth = 2
+  const offsetX = -f.mod(viewX.value, gridSize)
+  const offsetY = -f.mod(viewY.value, gridSize)
+  let yi = y1
+  for (let y = offsetY; y < canvas.height + gridSize; y += gridSize) {
+    let xi = x1
+    for (let x = offsetX; x < canvas.width + gridSize; x += gridSize) {
+      if (xi < min_x || xi > max_x || yi < min_y || yi > max_y) {
+        context.drawImage(oobPatternCanvas, x, y, gridSize, gridSize)
+      } else {
         context.beginPath()
         context.moveTo(x - 1, y)
         context.lineTo(x + 1, y)
         context.stroke()
       }
+      xi += 1
     }
+    yi += 1
   }
   let now = ''
   if (renderCount % 100 === 0) {
@@ -365,7 +401,8 @@ function renderCanvas() {
     for (let cy = cy1; cy <= cy2; cy++) {
       const chunk = canvasStore.getChunk(cx, cy)
       if (chunk?.isLoading) {
-        context.fillStyle = 'rgb(255,255,255,0.4)'
+        const pulse = 0.3 + Math.sin(renderCount * 0.04) * 0.1
+        context.fillStyle = `rgba(255, 255, 255, ${pulse})`
         const x = cx * zoomedChunkSize.value - viewX.value
         const y = cy * zoomedChunkSize.value - viewY.value
         context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
@@ -403,15 +440,31 @@ function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: s
   if (artwork.collected_at) {
     if (!artwork.collectionEffect) return 0
     artwork.collectionEffect = updateEffect(artwork.collectionEffect, Date.now()) || undefined
-    const remaining = (1 - (artwork.collectionEffect?.progress ?? 1)) * resolution
-    renderArtwork(artwork.pixels ?? [], context, x, y, resolution, remaining, pixelSize)
+    const remaining = 1 - (artwork.collectionEffect?.progress ?? 1)
+    context.drawImage(
+      artwork.offscreenCanvas!,
+      0,
+      0,
+      resolution,
+      remaining * resolution,
+      x,
+      y,
+      zoomedArtSize.value,
+      remaining * zoomedArtSize.value,
+    )
+
     return 1
   }
   if (artwork.expires_at < now) {
     artwork.is_expired = true
     artwork.particles = initializeDisintegrationParticles(artwork)
   }
-  renderArtwork(artwork.pixels ?? [], context, x, y, resolution, resolution, pixelSize)
+  if (!artwork.offscreenCanvas) {
+    artwork.offscreenCanvas = new OffscreenCanvas(resolution, resolution)
+    const offscreenCanvasCtx = artwork.offscreenCanvas.getContext('2d')!
+    renderArtwork(artwork.pixels ?? [], offscreenCanvasCtx)
+  }
+  context.drawImage(artwork.offscreenCanvas, x, y, zoomedArtSize.value, zoomedArtSize.value)
   return 1
 }
 
@@ -426,16 +479,8 @@ function updateQueryParams() {
   }, 500)
 }
 
-// Event handlers
-function handleClickLocation(event: MouseEvent) {
-  const { x, y } = getEventLocation(event)
-  const coords = getCanvasCoordinates(x, y)
-  const {
-    min_x = -Infinity,
-    max_x = Infinity,
-    min_y = -Infinity,
-    max_y = Infinity,
-  } = canvasStore.canvasConfig ?? {}
+function setSelectedLocation(coords: { x: number; y: number }) {
+  const { min_x, max_x, min_y, max_y } = canvasBounds.value
   if (coords.x < min_x || coords.x > max_x || coords.y < min_y || coords.y > max_y) {
     return
   }
@@ -444,6 +489,13 @@ function handleClickLocation(event: MouseEvent) {
     return
   }
   selectedLocation.value = { ...coords, artwork: clickedArtwork }
+}
+
+// Event handlers
+function handleClickLocation(event: MouseEvent | TouchEvent) {
+  const { x, y } = getEventLocation(event)
+  const coords = getCanvasCoordinates(x, y)
+  setSelectedLocation(coords)
 }
 
 function handleMouseDown(event: MouseEvent | TouchEvent) {
@@ -455,17 +507,12 @@ function handleMouseDown(event: MouseEvent | TouchEvent) {
 
 function handleMouseMove(event: MouseEvent | TouchEvent) {
   const { x, y } = getEventLocation(event)
-
   if (isDragging.value) {
     // Pan the canvas
     const deltaX = x - dragStart.value.x
     const deltaY = y - dragStart.value.y
-
     viewX.value -= deltaX
     viewY.value -= deltaY
-
-    // out-of-bounds color
-
     dragStart.value = { x, y }
     updateQueryParams()
   }
@@ -496,11 +543,8 @@ function handleWheel(event: WheelEvent) {
 }
 
 function handlePinch(e: TouchEvent) {
-  e.preventDefault()
-
   const touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   const touch2 = { x: e.touches[1].clientX, y: e.touches[1].clientY }
-
   let currentDistance = (touch1.x - touch2.x) ** 2 + (touch1.y - touch2.y) ** 2
   if (initialPinchDistance.value === null) {
     initialPinchDistance.value = currentDistance
@@ -545,12 +589,12 @@ let animationFrame: number
 let lastFrameTime: number | undefined = undefined
 let fps = 1
 
-function animate(ts?: any) {
-  if (!lastFrameTime || !ts) {
-    lastFrameTime = ts
+function animate(timestamp?: number) {
+  if (!lastFrameTime || !timestamp) {
+    lastFrameTime = timestamp
   } else {
-    const dt = (ts - lastFrameTime) / 1000
-    lastFrameTime = ts
+    const dt = (timestamp - lastFrameTime) / 1000
+    lastFrameTime = timestamp
     fps = 1 / dt
   }
   renderCanvas()
@@ -559,19 +603,18 @@ function animate(ts?: any) {
 
 // Lifecycle
 onMounted(() => {
-  if (canvasRef.value) {
-    ctx.value = canvasRef.value.getContext('2d')
-    animate()
-  }
+  ctx.value = canvasRef.value!.getContext('2d')
+  animate()
   function resize() {
     viewportWidth.value = window.innerWidth
     viewportHeight.value = window.innerHeight
+    nextTick(() => (ctx.value!.imageSmoothingEnabled = false))
   }
   window.addEventListener('resize', resize)
   resize()
 
   const { id } = route.params
-  canvasStore.loadCanvas(+id || 1)
+  canvasStore.switchCanvas(+id || 1)
   const { x, y, z } = route.query
   setLocation(+(x ?? ''), +(y ?? ''), z ? +z : undefined)
 
@@ -590,10 +633,7 @@ onMounted(() => {
   })
 })
 
-onBeforeRouteLeave(() => {
-  console.log('leaving route')
-  if (canvasStore.currentCanvasId) {
-    canvasStore.unsubscribeFromCanvas(canvasStore.currentCanvasId)
-  }
+onBeforeRouteLeave((to, from) => {
+  console.log('leaving route', to, from)
 })
 </script>

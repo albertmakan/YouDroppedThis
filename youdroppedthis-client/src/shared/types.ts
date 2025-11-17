@@ -35,6 +35,7 @@ export type Artwork = {
   pixels?: string[][]
   particles?: Particle[]
   collectionEffect?: Effect
+  offscreenCanvas?: OffscreenCanvas
 }
 
 export type CanvasInfo = {
@@ -55,6 +56,7 @@ export type CanvasInfo = {
   premium_zone_enabled?: boolean
   background_color?: string
   theme?: string
+  palette?: string[]
   total_artworks_placed: number
   total_artworks_collected: number
   active_artworks_count: number

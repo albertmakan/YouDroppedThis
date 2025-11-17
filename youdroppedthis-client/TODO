@@ -25,17 +25,20 @@
 - canvas stats
 - account page ~
 - sql script
+- canvas texture (out-of-bounds, )
+- user collection artwork options popup (bg-color, max-size, pp/bio, visit location, time data)
+- validate pixel data
 
-- welcomebonus explicit?
-- user collection artwork options popup
 - buying coins ~ // payment processor
 - collectible after time
-- sending full artwork vs id when created??
+- particle limit, 1/256 piece of oc?
+- @tanstack/vue-query
 
 - improve rate limiter (cron?)
-- canvas texture ~
+- sending full artwork vs id when created??
 - Multi-Level Caching?
 - notifications?
 - define economy
 - daily themes
+
 - deploy on cloud
