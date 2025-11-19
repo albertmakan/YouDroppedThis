@@ -28,12 +28,12 @@
 - canvas texture (out-of-bounds, )
 - user collection artwork options popup (bg-color, max-size, pp/bio, visit location, time data)
 - validate pixel data
+- particle limit, 1/256 piece of oc?
+- collectible after time
+
+- @tanstack/vue-query (for profiles, collections and transactions)
 
 - buying coins ~ // payment processor
-- collectible after time
-- particle limit, 1/256 piece of oc?
-- @tanstack/vue-query
-
 - improve rate limiter (cron?)
 - sending full artwork vs id when created??
 - Multi-Level Caching?

@@ -51,17 +51,27 @@ export class ArtworkService {
     try {
       // Create artwork
       const artworkResult = await db.queryObject<Artwork>`
-        INSERT INTO app.artworks (canvas_id, user_id, x, y, pixel_data, expires_at)
-        VALUES (${canvasId}, ${userId}, ${x}, ${y}, ${pixelData}, NOW() + INTERVAL '1 minute' * ${canvas.artwork_expiry_minutes})
+        INSERT INTO app.artworks (canvas_id, user_id, x, y, pixel_data, expires_at, collectable_after)
+        VALUES (
+          ${canvasId}, ${userId},
+          ${x}, ${y},
+          ${pixelData},
+          NOW() + INTERVAL '1 minute' * ${canvas.artwork_expiry_minutes},
+          NOW() + INTERVAL '1 minute' * ${canvas.min_visibility_minutes ?? 1}
+        )
         RETURNING *`;
       const artwork = artworkResult.rows[0];
 
       // Record transaction
       await db.queryArray`
         INSERT INTO app.transactions (user_id, type, amount, artwork_id, description)
-        VALUES (${userId}, 'placement', ${-canvas.placement_fee}, ${
-        artwork.id
-      }, 'Artwork placement')`;
+        VALUES (
+          ${userId},
+          'placement',
+          ${-canvas.placement_fee},
+          ${artwork.id},
+          'Artwork placement'
+        )`;
 
       await db.queryArray("COMMIT");
 

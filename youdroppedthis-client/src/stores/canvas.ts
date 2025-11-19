@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import type { Artwork, CanvasInfo } from '@/shared/types'
-import { canvasApi, parsePixelData } from '@/services/api'
+import { canvasApi } from '@/services/api'
 import { supabase } from '@/services/supabase'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 
@@ -73,7 +73,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     console.log(payload)
     if (event === 'placed') {
       const artwork = payload as Artwork
-      artwork.pixels = parsePixelData(artwork.pixel_data)
       const cx = Math.floor(artwork.x / CHUNK_SIZE)
       const cy = Math.floor(artwork.y / CHUNK_SIZE)
       getChunk(cx, cy)?.arts?.push(artwork)
@@ -142,26 +141,3 @@ export const useCanvasStore = defineStore('canvas', () => {
     unsubscribeFromCanvas,
   }
 })
-
-export function initializeDisintegrationParticles(artwork: Artwork) {
-  const particles = []
-  const resolution = artwork.pixels?.length || 1
-  for (let pixelY = 0; pixelY < resolution; pixelY++) {
-    for (let pixelX = 0; pixelX < resolution; pixelX++) {
-      const color = artwork.pixels?.[pixelY]?.[pixelX]
-      if (!color) continue
-      const spreadAngle = Math.random() * Math.PI * 2
-      const spreadSpeed = Math.random()
-      particles.push({
-        x: pixelX,
-        y: pixelY,
-        color,
-        vx: Math.cos(spreadAngle) * spreadSpeed,
-        vy: Math.sin(spreadAngle) * spreadSpeed - 0.5, // Slight upward bias
-        life: 1.0,
-        size: 1,
-      })
-    }
-  }
-  return particles
-}

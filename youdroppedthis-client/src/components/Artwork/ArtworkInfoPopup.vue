@@ -30,6 +30,7 @@
         class="absolute top-full left-1/2 -translate-x-1/2 min-w-full box-content bg-black/90 backdrop-blur-sm rounded-lg flex justify-center p-1 border border-neutral-600"
       >
         <button
+          v-if="isCollectable"
           @click="collectArtwork"
           @touchmove.prevent.passive
           class="cursor-pointer pointer-events-auto size-8"
@@ -67,9 +68,13 @@ const { top, left, size, artwork } = defineProps<{
 const timeInfo = computed(() => {
   const expirationTime = new Date(artwork.expires_at).getTime()
   const totalTime = expirationTime - new Date(artwork.created_at).getTime()
-  return { expirationTime, totalTime }
+  const collectableTime = artwork.collectable_after
+    ? new Date(artwork.collectable_after).getTime()
+    : 0
+  return { expirationTime, totalTime, collectableTime }
 })
 const timeRemaining = ref({ p: 1, s: '' })
+const isCollectable = ref(false)
 
 async function collectArtwork() {
   if (!authStore.user) {
@@ -85,7 +90,8 @@ async function collectArtwork() {
 }
 
 function updateTime() {
-  const remainingMS = timeInfo.value.expirationTime - Date.now()
+  const now = Date.now()
+  const remainingMS = timeInfo.value.expirationTime - now
   if (remainingMS > 0) {
     const { hours, minutes, seconds } = getH_M_S(remainingMS)
     timeRemaining.value.p = remainingMS / timeInfo.value.totalTime
@@ -94,6 +100,7 @@ function updateTime() {
     timeRemaining.value.p = 0
     timeRemaining.value.s = 'Expired'
   }
+  isCollectable.value = timeInfo.value.collectableTime < now
 }
 
 let interval: number | undefined = undefined

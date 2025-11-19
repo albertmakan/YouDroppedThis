@@ -4,6 +4,7 @@ export type Canvas = {
   description?: string;
   max_artworks_per_user_per_hour: number;
   artwork_expiry_minutes: number;
+  min_visibility_minutes?: number;
   placement_fee: number;
   created_at: string;
   grid_size: number;

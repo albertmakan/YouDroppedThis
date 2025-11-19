@@ -3,9 +3,9 @@ export type Particle = {
   y: number
   vx: number
   vy: number
-  color: string
+  sx: number
+  sy: number
   life: number
-  size: number
   lastUpdateTime?: number
 }
 
@@ -26,6 +26,26 @@ export const DEFAULT_CONFIG: ParticlePhysicsConfig = {
   gravity: 0.05,
   lifeDrain: 0.005,
   maxCatchupTime: 5000,
+}
+
+export function initializeDisintegrationParticles(resolution = 16) {
+  const particles = []
+  for (let y = 0; y < resolution; y++) {
+    for (let x = 0; x < resolution; x++) {
+      const spreadAngle = Math.random() * Math.PI * 2
+      const spreadSpeed = Math.random()
+      particles.push({
+        sx: x,
+        sy: y,
+        x,
+        y,
+        vx: Math.cos(spreadAngle) * spreadSpeed,
+        vy: Math.sin(spreadAngle) * spreadSpeed - 0.5, // Slight upward bias
+        life: 1.0,
+      } as Particle)
+    }
+  }
+  return particles
 }
 
 export function updateParticlePhysics(
@@ -117,7 +137,6 @@ export function updateParticlePhysics(
   particle.vx = newVx
   particle.vy = newVy
   particle.life = newLife
-  particle.size = newLife // Size correlates with life
   particle.lastUpdateTime = currentTime
 
   return particle

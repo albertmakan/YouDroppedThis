@@ -57,7 +57,7 @@
         @click="reopenEditor"
         class="group relative size-16 hover:scale-110 rounded-md border-2 border-dashed border-neutral-400 cursor-pointer"
       >
-        <ArtworkThumbnail :artwork="{ pixels: editorStore.pixels }" />
+        <ArtworkThumbnail :offscreen-canvas="editorStore.offscreenCanvas" />
         <template v-if="editorLocationTaken">
           <div class="absolute -top-2 -left-2 rounded-full bg-code-warn size-4" />
           <div
@@ -144,7 +144,6 @@ import {
   CHUNK_SIZE,
   DEFAULT_PALETTE,
   GRID_COLOR,
-  initializeDisintegrationParticles,
   MAX_ZOOM,
   MIN_ZOOM,
   useCanvasStore,
@@ -157,8 +156,8 @@ import ProfileButton from '@/components/User/ProfileButton.vue'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import { updateEffect, updateParticles } from '@/utils/physics'
-import { renderArtwork, renderParticles } from '../Artwork/renderArtwork'
+import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
+import { createOffscreenCanvas, renderParticles } from '../Artwork/renderArtwork'
 import ArtworkInfoPopup from '../Artwork/ArtworkInfoPopup.vue'
 import DrawIcon from '../Icons/DrawIcon.vue'
 import Drawer from '../Layout/Drawer.vue'
@@ -428,13 +427,16 @@ function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: s
     return 0
   }
   const { x, y } = getArtworkRelativeCoordinates(artwork)
-  const resolution = artwork.pixels?.length || 1
+  const resolution = artwork.pixel_data.mat.length || 1
   const pixelSize = zoomedArtSize.value / resolution
 
+  if (!artwork.offscreenCanvas) {
+    artwork.offscreenCanvas = createOffscreenCanvas(artwork.pixel_data)
+  }
   if (artwork.is_expired) {
     if (!artwork.particles?.length) return 0
     artwork.particles = updateParticles(artwork.particles, Date.now())
-    renderParticles(artwork.particles ?? [], context, x, y, pixelSize)
+    renderParticles(artwork.offscreenCanvas, artwork.particles, context, x, y, pixelSize)
     return 1
   }
   if (artwork.collected_at) {
@@ -442,7 +444,7 @@ function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: s
     artwork.collectionEffect = updateEffect(artwork.collectionEffect, Date.now()) || undefined
     const remaining = 1 - (artwork.collectionEffect?.progress ?? 1)
     context.drawImage(
-      artwork.offscreenCanvas!,
+      artwork.offscreenCanvas,
       0,
       0,
       resolution,
@@ -457,12 +459,7 @@ function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: s
   }
   if (artwork.expires_at < now) {
     artwork.is_expired = true
-    artwork.particles = initializeDisintegrationParticles(artwork)
-  }
-  if (!artwork.offscreenCanvas) {
-    artwork.offscreenCanvas = new OffscreenCanvas(resolution, resolution)
-    const offscreenCanvasCtx = artwork.offscreenCanvas.getContext('2d')!
-    renderArtwork(artwork.pixels ?? [], offscreenCanvasCtx)
+    artwork.particles = initializeDisintegrationParticles()
   }
   context.drawImage(artwork.offscreenCanvas, x, y, zoomedArtSize.value, zoomedArtSize.value)
   return 1

@@ -50,7 +50,7 @@
               </router-link>
             </div>
             <div class="" :style="{ background: CANVAS_BACKGROUND }">
-              <ArtworkThumbnail :artwork="selectedArtwork" />
+              <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
             </div>
             <div
               class="border border-neutral-600 rounded-b-lg bg-black p-2 text-xs text-neutral-400"
@@ -66,7 +66,7 @@
         </div>
         <div
           v-if="profileInfoOpen"
-          class="absolute top-0 h-[calc(100vh-160px)] w-full bg-black/50 backdrop-blur-2xl z-10 overflow-y-auto p-4"
+          class="absolute top-0 h-[calc(100vh-160px)] w-full bg-black/50 backdrop-blur-2xl z-10 overflow-y-auto p-4 whitespace-pre-wrap"
         >
           <div class="text-right">
             <button @click="profileInfoOpen = false" class="cursor-pointer size-6">
@@ -120,11 +120,7 @@
             tabindex="0"
             @click="selectedArtwork = artwork"
           >
-            <ArtworkThumbnail
-              :artwork="artwork"
-              :show-status="true"
-              :show-timer="activeTab === 'placed'"
-            />
+            <ArtworkThumbnail :offscreen-canvas="artwork.offscreenCanvas" />
           </div>
         </div>
 
@@ -165,6 +161,7 @@ import { useProfile } from '@/stores/profiles'
 import LocationIcon from '../Icons/LocationIcon.vue'
 import ProfilePicture from './ProfilePicture.vue'
 import ProfileCard from './ProfileCard.vue'
+import { createOffscreenCanvas } from '../Artwork/renderArtwork'
 
 const { userId } = defineProps<{
   userId: string
@@ -222,6 +219,9 @@ async function loadArtworks(reset: boolean = false) {
       activeTab.value,
       pageNum,
       ITEMS_PER_PAGE,
+    )
+    loadedArtworks.forEach(
+      (artwork) => (artwork.offscreenCanvas = createOffscreenCanvas(artwork.pixel_data)),
     )
     const more =
       loadedArtworks.length === ITEMS_PER_PAGE &&

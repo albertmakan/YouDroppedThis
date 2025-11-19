@@ -1,7 +1,7 @@
 <template>
   <canvas
-    :width="resolution"
-    :height="resolution"
+    :width="offscreenCanvas?.width"
+    :height="offscreenCanvas?.height"
     class="size-full"
     style="image-rendering: pixelated"
     ref="canvasRef"
@@ -9,16 +9,14 @@
 </template>
 
 <script setup lang="ts">
-import type { Artwork } from '@/shared/types'
-import { computed, onMounted, ref, type DeepReadonly } from 'vue'
-import { renderArtwork } from './renderArtwork'
+import { onMounted, ref } from 'vue'
 
-const { artwork } = defineProps<{ artwork: DeepReadonly<Pick<Artwork, 'pixels'>> }>()
-const resolution = computed(() => artwork.pixels?.length || 1)
+const { offscreenCanvas } = defineProps<{ offscreenCanvas?: OffscreenCanvas }>()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 onMounted(() => {
+  if (!offscreenCanvas) return
   const context = canvasRef.value!.getContext('2d')
-  renderArtwork(artwork.pixels ?? [], context!)
+  context?.drawImage(offscreenCanvas, 0, 0)
 })
 </script>

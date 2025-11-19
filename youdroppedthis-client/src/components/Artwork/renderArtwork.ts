@@ -1,4 +1,24 @@
+import type { PixelData } from '@/shared/types'
 import type { Particle } from '@/utils/physics'
+import type { DeepReadonly } from 'vue'
+
+export function createOffscreenCanvas({ palette, mat }: DeepReadonly<PixelData>) {
+  const offscreenCanvas = new OffscreenCanvas(mat[0].length, mat.length)
+  const offscreenCanvasCtx = offscreenCanvas.getContext('2d')!
+  let filledCount = 0
+  for (let pixelY = 0; pixelY < mat.length; pixelY++) {
+    for (let pixelX = 0; pixelX < mat[pixelY].length; pixelX++) {
+      const val = mat[pixelY][pixelX]
+      const fill = palette[val]
+      if (fill) {
+        offscreenCanvasCtx.fillStyle = fill
+        offscreenCanvasCtx.fillRect(pixelX, pixelY, 1, 1)
+        filledCount += 1
+      }
+    }
+  }
+  return offscreenCanvas
+}
 
 export function renderArtwork(
   pixels: Readonly<Readonly<string[]>[]>,
@@ -24,22 +44,30 @@ export function renderArtwork(
 }
 
 export function renderParticles(
+  artworkCanvas: OffscreenCanvas,
   particles: Readonly<Particle[]>,
   context: CanvasRenderingContext2D,
   offsetX: number,
   offsetY: number,
   pixelSize: number,
+  resolution = 16,
 ) {
+  const { width, height } = artworkCanvas
+  const pieceWidth = width / resolution
+  const pieceHeight = height / resolution
   for (const particle of particles) {
     if (particle.life > 0) {
       context.globalAlpha = particle.life
-      context.fillStyle = particle.color
-      const particleSize = pixelSize * particle.size
-      context.fillRect(
-        offsetX + particle.x * pixelSize,
-        offsetY + particle.y * pixelSize,
-        particleSize,
-        particleSize,
+      context.drawImage(
+        artworkCanvas,
+        particle.sx * pieceWidth,
+        particle.sy * pieceHeight,
+        pieceWidth,
+        pieceHeight,
+        offsetX + particle.x * pixelSize * pieceWidth,
+        offsetY + particle.y * pixelSize * pieceHeight,
+        pixelSize * pieceWidth,
+        pixelSize * pieceHeight,
       )
     }
   }

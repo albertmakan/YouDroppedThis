@@ -32,7 +32,6 @@ export type Artwork = {
   expires_at: string
   is_expired?: boolean
 
-  pixels?: string[][]
   particles?: Particle[]
   collectionEffect?: Effect
   offscreenCanvas?: OffscreenCanvas
@@ -44,6 +43,7 @@ export type CanvasInfo = {
   description?: string
   max_artworks_per_user_per_hour: number
   artwork_expiry_minutes: number
+  min_visibility_minutes?: number
   placement_fee: number
   created_at: string
   updated_at?: string

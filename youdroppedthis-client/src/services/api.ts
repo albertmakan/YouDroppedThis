@@ -60,11 +60,7 @@ export const canvasApi = {
     bounds: { minX: number; maxX: number; minY: number; maxY: number },
   ) {
     const response = await api.get(`/canvases/${id}/area`, { params: bounds })
-    const responseData = response.data as { artworks: Artwork[] }
-    responseData.artworks.forEach(
-      (artwork) => (artwork.pixels = parsePixelData(artwork.pixel_data)),
-    )
-    return responseData
+    return response.data as { artworks: Artwork[] }
   },
 }
 
@@ -73,9 +69,7 @@ export const artworkApi = {
     const response = await api.post('/artworks/place', placement, {
       params: { canvas_id: canvasId },
     })
-    const responseData = response.data as { artwork: Artwork; userProfile: Profile }
-    responseData.artwork.pixels = parsePixelData(responseData.artwork.pixel_data)
-    return responseData
+    return response.data as { artwork: Artwork; userProfile: Profile }
   },
 
   async collectArtwork(canvasId: number, artworkId: number) {
@@ -84,9 +78,7 @@ export const artworkApi = {
       {},
       { params: { canvas_id: canvasId } },
     )
-    const responseData = response.data as { artwork: Artwork; userProfile: Profile }
-    responseData.artwork.pixels = parsePixelData(responseData.artwork.pixel_data)
-    return responseData
+    return response.data as { artwork: Artwork; userProfile: Profile }
   },
 
   async getUserArtworks(
@@ -95,11 +87,7 @@ export const artworkApi = {
     limit: number = 16,
   ) {
     const response = await api.get(`/artworks/${type}`, { params: { page, limit } })
-    const responseData = response.data as { artworks: Artwork[]; total: number }
-    responseData.artworks.forEach(
-      (artwork) => (artwork.pixels = parsePixelData(artwork.pixel_data)),
-    )
-    return responseData
+    return response.data as { artworks: Artwork[]; total: number }
   },
 }
 
@@ -131,12 +119,4 @@ export const transactionApi = {
     const response = await api.post('/transactions/purchase', { amount })
     return response.data as { success: boolean; message: string; newBalance?: number }
   },
-}
-
-export function parsePixelData(pixel_data: PixelData) {
-  try {
-    return pixel_data.mat.map((row) => row.map((c) => pixel_data.palette[c]))
-  } catch (e) {
-    console.log(e)
-  }
 }
