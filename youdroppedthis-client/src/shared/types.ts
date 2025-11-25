@@ -47,7 +47,6 @@ export type CanvasInfo = {
   placement_fee: number
   created_at: string
   updated_at?: string
-  grid_size: number
   is_active?: boolean
   max_x?: number
   max_y?: number
@@ -70,10 +69,4 @@ export type Transaction = {
   created_at: string
   description?: string
   artwork_id?: number
-}
-
-export interface PlacementRequest {
-  x: number
-  y: number
-  pixelData: PixelData
 }

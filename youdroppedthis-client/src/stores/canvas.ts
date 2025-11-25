@@ -1,12 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
-import type { Artwork, CanvasInfo } from '@/shared/types'
+import type { Artwork } from '@/shared/types'
 import { canvasApi } from '@/services/api'
 import { supabase } from '@/services/supabase'
 import type { RealtimeChannel } from '@supabase/realtime-js'
 
 export const CHUNK_SIZE = 16
-export const ART_SIZE = 64
 export const MIN_ZOOM = 0.5
 export const MAX_ZOOM = 10
 export const CANVAS_BACKGROUND = '#18181b'
@@ -36,7 +35,6 @@ export const DEFAULT_PALETTE = [
 
 export const useCanvasStore = defineStore('canvas', () => {
   const currentCanvasId = ref<number | null>(null)
-  const canvasInfo = ref<CanvasInfo | null>(null)
   const chunks = shallowRef<Map<string, { arts?: Artwork[]; isLoading: boolean }>>(new Map())
   const subscription = ref<RealtimeChannel | null>(null)
   const realtimeSubscribeState = ref('')
@@ -48,7 +46,6 @@ export const useCanvasStore = defineStore('canvas', () => {
     chunks.value.clear()
 
     currentCanvasId.value = canvasId
-    canvasInfo.value = await canvasApi.getCanvasInfo(canvasId)
     subscribeToCanvas(canvasId)
   }
 
@@ -70,7 +67,7 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function handleRealtimeEvent(event: string, payload: any) {
-    console.log(payload)
+    // console.log(payload)
     if (event === 'placed') {
       const artwork = payload as Artwork
       const cx = Math.floor(artwork.x / CHUNK_SIZE)
@@ -95,10 +92,11 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   async function loadChunk(cx: number, cy: number, zoom: number) {
+    if (!currentCanvasId.value) return
     const key = getChunkKey(cx, cy)
     chunks.value?.set(key, { isLoading: true })
     try {
-      const response = await canvasApi.getArtworksInArea(1, {
+      const response = await canvasApi.getArtworksInArea(currentCanvasId.value, {
         minX: cx * CHUNK_SIZE,
         maxX: (cx + 1) * CHUNK_SIZE,
         minY: cy * CHUNK_SIZE,
@@ -131,7 +129,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   return {
     currentCanvasId,
-    canvasInfo,
     realtimeSubscribeState,
     switchCanvas,
     getChunk,

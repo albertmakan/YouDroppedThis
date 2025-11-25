@@ -1,32 +1,29 @@
 <template>
-  <div class="fixed inset-0 flex items-center z-50 bg-black/50" @click="closeModal">
+  <div class="fixed inset-0 flex items-center z-50 bg-black/50" @click="emit('close')">
     <div
       class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 w-fit border border-neutral-600"
       @click.stop
     >
-      <div class="flex w-full justify-between items-center gap-4 text-2xl p-4">
+      <div class="flex w-full justify-between items-center gap-4 text-xl p-3">
         <h2>{{ canvas.name }}</h2>
-        <button @click="closeModal" class="cursor-pointer size-6"><XMarkIcon /></button>
+        <button @click="emit('close')" class="cursor-pointer size-6"><XMarkIcon /></button>
       </div>
-      <div class="flex p-4 pt-0 border-b border-neutral-600">
-        <div>
-          <span
-            v-if="canvas.is_active"
-            class="inline-block rounded-full py-1 px-3 bg-primary/30 text-xs font-semibold"
-            >Active</span
-          >
-          <span
-            v-else
-            class="inline-block rounded-full py-1 px-3 bg-amber-700/30 text-xs font-semibold"
-            >Inactive</span
-          >
-        </div>
+      <div class="flex p-3 pt-0 border-b border-neutral-600">
+        <span
+          v-if="canvas.is_active"
+          class="inline-block rounded-full py-1 px-3 bg-primary/30 text-xs"
+        >
+          Active
+        </span>
+        <span v-else class="inline-block rounded-full py-1 px-3 bg-amber-700/30 text-xs">
+          Inactive
+        </span>
       </div>
 
       <div class="h-[calc(100vh-160px)] max-w-96 overflow-y-auto p-6">
         <!-- Description -->
         <div v-if="canvas.description" class="mb-6">
-          <p class="text-neutral-400 text-sm">{{ canvas.description }}</p>
+          <p class="text-neutral-300 text-sm whitespace-pre-wrap">{{ canvas.description }}</p>
         </div>
 
         <!-- Stats Grid -->
@@ -78,13 +75,6 @@
             </div>
 
             <div>
-              <span class="text-neutral-400 text-sm">Grid Size</span>
-              <span class="text-sm font-medium">
-                {{ canvas.grid_size }}×{{ canvas.grid_size }} px
-              </span>
-            </div>
-
-            <div>
               <span class="text-neutral-400 text-sm">Coordinates</span>
               <span class="text-sm font-medium">
                 x: {{ canvas.min_x || -Infinity }} to {{ canvas.max_x || Infinity }}
@@ -96,6 +86,13 @@
             <div>
               <span class="text-neutral-400 text-sm">Artwork Expiry</span>
               <span class="text-sm font-medium">{{ canvas.artwork_expiry_minutes }} minutes</span>
+            </div>
+
+            <div>
+              <span class="text-neutral-400 text-sm">Minimum Visibility</span>
+              <span class="text-sm font-medium"
+                >{{ canvas.min_visibility_minutes ?? 1 }} minutes</span
+              >
             </div>
 
             <div>
@@ -161,14 +158,8 @@ import { computed } from 'vue'
 
 const { canvas } = defineProps<{ canvas: CanvasInfo }>()
 
-const emit = defineEmits<{
-  close: []
-}>()
+const emit = defineEmits<{ close: [] }>()
 
-function closeModal() {
-  emit('close')
-}
-// Computed values
 const canvasWidth = computed(() => (canvas.max_x || Infinity) - (canvas.min_x || -Infinity) + 1)
 const canvasHeight = computed(() => (canvas.max_y || Infinity) - (canvas.min_y || -Infinity) + 1)
 const totalCells = computed(() => canvasWidth.value * canvasHeight.value)

@@ -43,6 +43,7 @@ export class TransactionService {
       success: true,
       message: `Amount of ${amount} coins claimed!`,
       newBalance: balanceResult.rows[0].balance,
+      userId,
     };
   }
 
@@ -58,7 +59,11 @@ export class TransactionService {
         AND type = 'bonus'`;
 
     if (lastBonusResult.rows.length > 0) {
-      return { success: false, message: "Daily bonus already claimed today" };
+      return {
+        success: false,
+        message: "Daily bonus already claimed today",
+        userId,
+      };
     }
 
     // Award daily bonus

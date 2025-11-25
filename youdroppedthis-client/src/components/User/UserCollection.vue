@@ -7,9 +7,13 @@
       <div class="flex w-full justify-between">
         <button class="flex gap-2 cursor-pointer items-center" @click="profileInfoOpen = true">
           <span class="text-xl"><ProfilePicture :profile /></span>
-          <span>{{ profile?.username }}</span>
+          <span
+            v-if="profileLoading"
+            class="bg-neutral-700 animate-pulse rounded-md w-[8em] h-[1em]"
+          />
+          <span v-else class="">{{ profile?.username }}</span>
         </button>
-        <button @click="closeModal" class="cursor-pointer size-6"><XMarkIcon /></button>
+        <button @click="emit('close')" class="cursor-pointer size-6"><XMarkIcon /></button>
       </div>
 
       <!-- Tab Navigation -->
@@ -49,7 +53,7 @@
                 <LocationIcon />
               </router-link>
             </div>
-            <div class="" :style="{ background: CANVAS_BACKGROUND }">
+            <div :style="{ background: CANVAS_BACKGROUND }">
               <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
             </div>
             <div
@@ -80,7 +84,7 @@
       <!-- Content Area -->
       <div class="h-[calc(100vh-160px)] overflow-y-scroll">
         <!-- Loading state -->
-        <div v-if="isLoading && currentArtworks.length === 0" class="grid grid-cols-4 gap-1">
+        <div v-if="!data?.pages.length" class="grid grid-cols-4 gap-1">
           <div
             v-for="i in ITEMS_PER_PAGE"
             :key="i"
@@ -89,7 +93,7 @@
         </div>
 
         <!-- Empty state -->
-        <div v-else-if="currentArtworks.length === 0" class="text-center my-14 mx-auto max-w-80">
+        <div v-else-if="!data?.pages[0].artworks.length" class="text-center my-14 mx-auto max-w-80">
           <template v-if="activeTab === 'placed'">
             <div class="max-w-32 mx-auto mb-4 text-neutral-400">
               <PaletteIcon />
@@ -112,33 +116,32 @@
 
         <!-- Artworks Grid -->
         <div v-else class="grid grid-cols-4 gap-1">
-          <div
-            v-for="artwork in currentArtworks"
-            :key="artwork.id"
-            class="aspect-square overflow-hidden cursor-pointer sm:w-32"
-            :style="{ background: CANVAS_BACKGROUND }"
-            tabindex="0"
-            @click="selectedArtwork = artwork"
-          >
-            <ArtworkThumbnail :offscreen-canvas="artwork.offscreenCanvas" />
-          </div>
+          <template v-for="page in data?.pages">
+            <div
+              v-for="artwork in page.artworks"
+              :key="artwork.id"
+              class="aspect-square overflow-hidden cursor-pointer sm:w-32"
+              :style="{ background: CANVAS_BACKGROUND }"
+              tabindex="0"
+              @click="selectedArtwork = artwork"
+            >
+              <ArtworkThumbnail :offscreen-canvas="artwork.offscreenCanvas" />
+            </div>
+          </template>
         </div>
 
         <!-- Load More Button -->
-        <div
-          v-if="hasMore[activeTab].value && currentArtworks.length > 0"
-          class="mt-1 p-2 text-center text-sm"
-        >
+        <div v-if="hasNextPage" class="mt-1 p-2 text-center text-sm">
           <button
-            @click="loadMore"
-            :disabled="isLoadingMore"
+            @click="fetchNextPage()"
+            :disabled="isFetchingNextPage"
             class="cursor-pointer flex w-full gap-2 items-center justify-center disabled:cursor-not-allowed py-2 border border-dashed border-neutral-600"
           >
             <div
-              v-if="isLoadingMore"
+              v-if="isFetchingNextPage"
               class="size-4 animate-spin rounded-full border-2 border-t-transparent"
             />
-            {{ isLoadingMore ? 'Loading...' : `Load more` }}
+            {{ isFetchingNextPage ? 'Loading...' : `Load more` }}
           </button>
         </div>
       </div>
@@ -147,106 +150,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, toRef } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import ArtworkThumbnail from '../Artwork/ArtworkThumbnail.vue'
 import type { Artwork } from '@/shared/types'
 import { formatRelativeTime, getH_M_S } from '@/utils/date'
-import { artworkApi } from '@/services/api'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import PaletteIcon from '../Icons/PaletteIcon.vue'
 import CollectionIcon from '../Icons/CollectionIcon.vue'
-import { useProfile } from '@/stores/profiles'
+import { useProfile } from '@/composables/useProfiles'
 import LocationIcon from '../Icons/LocationIcon.vue'
 import ProfilePicture from './ProfilePicture.vue'
 import ProfileCard from './ProfileCard.vue'
-import { createOffscreenCanvas } from '../Artwork/renderArtwork'
+import { ITEMS_PER_PAGE, useUserArtworks } from '@/composables/useUserArtworks'
 
-const { userId } = defineProps<{
-  userId: string
-}>()
+const props = defineProps<{ userId: string }>()
 
-const emit = defineEmits<{
-  close: []
-}>()
+const { data: profile, isLoading: profileLoading } = useProfile(toRef(props, 'userId'))
 
-function closeModal() {
-  emit('close')
-}
+const emit = defineEmits<{ close: [] }>()
 
 const authStore = useAuthStore()
-const { profile, isLoading: profileLoading, refresh } = useProfile(userId)
 
 const tabs = ['placed', 'collected'] as const
 const activeTab = ref<'placed' | 'collected'>('placed')
-const isLoading = ref(false)
-const isLoadingMore = ref(false)
 const selectedArtwork = ref<Artwork | null>(null)
 const profileInfoOpen = ref(false)
 
-const ITEMS_PER_PAGE = 16
-
-const artworks = { placed: ref<Artwork[]>([]), collected: ref<Artwork[]>([]) }
-const page = { placed: ref(1), collected: ref(1) }
-const hasMore = { placed: ref(true), collected: ref(true) }
-
-const currentArtworks = computed(() => artworks[activeTab.value].value)
-
 async function setActiveTab(tab: 'placed' | 'collected') {
   selectedArtwork.value = null
-  if (activeTab.value === tab) return
-
   activeTab.value = tab
-
-  if (artworks[tab].value.length === 0) {
-    await loadArtworks(true)
-  }
 }
 
-async function loadArtworks(reset: boolean = false) {
-  const isInitialLoad = reset || currentArtworks.value.length === 0
-
-  if (isInitialLoad) {
-    isLoading.value = true
-  } else {
-    isLoadingMore.value = true
-  }
-
-  try {
-    const pageNum = reset ? 1 : page[activeTab.value].value
-    const { artworks: loadedArtworks } = await artworkApi.getUserArtworks(
-      activeTab.value,
-      pageNum,
-      ITEMS_PER_PAGE,
-    )
-    loadedArtworks.forEach(
-      (artwork) => (artwork.offscreenCanvas = createOffscreenCanvas(artwork.pixel_data)),
-    )
-    const more =
-      loadedArtworks.length === ITEMS_PER_PAGE &&
-      pageNum * ITEMS_PER_PAGE < profile.value?.[`artworks_${activeTab.value}_count`]!
-
-    if (reset) {
-      artworks[activeTab.value].value = loadedArtworks
-      page[activeTab.value].value = 1
-    } else {
-      artworks[activeTab.value].value.push(...loadedArtworks)
-    }
-    hasMore[activeTab.value].value = more
-    page[activeTab.value].value++
-  } catch (error) {
-    console.error('Failed to load artworks:', error)
-  } finally {
-    isLoading.value = false
-    isLoadingMore.value = false
-  }
-}
-
-async function loadMore() {
-  if (!hasMore[activeTab.value].value || isLoadingMore.value) return
-  await loadArtworks(false)
-}
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserArtworks(
+  toRef(props, 'userId'),
+  activeTab,
+)
 
 function getArtworkStatus(artwork: Artwork) {
   if (artwork.collected_by) {
@@ -259,9 +199,4 @@ function getArtworkStatus(artwork: Artwork) {
   }
   return 'Expired ' + formatRelativeTime(artwork.expires_at)
 }
-
-// Lifecycle
-onMounted(async () => {
-  await loadArtworks(true)
-})
 </script>

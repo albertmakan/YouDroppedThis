@@ -87,7 +87,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   supabase.auth.getSession().then(({ data: { session }, error }) => {
     setAuth(session?.user ?? null)
-    loadProfile()
   })
 
   return {

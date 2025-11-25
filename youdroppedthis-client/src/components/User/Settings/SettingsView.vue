@@ -21,63 +21,61 @@
         <nav
           class="bg-black rounded-lg border border-neutral-600 lg:w-52 w-full h-fit sticky top-4"
         >
-          <div class="mask-x-from-80% lg:mask-none">
-            <div class="overflow-x-auto">
-              <ul class="flex lg:flex-col text-nowrap gap-2 p-2">
-                <li>
-                  <router-link
-                    to="general"
-                    :class="[
-                      'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
-                      route.params.tab === 'general'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                    ]"
-                  >
-                    General
-                  </router-link>
-                </li>
-                <li>
-                  <router-link
-                    to="account"
-                    :class="[
-                      'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
-                      route.params.tab === 'account'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                    ]"
-                  >
-                    Account
-                  </router-link>
-                </li>
-                <li>
-                  <router-link
-                    to="transactions"
-                    :class="[
-                      'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
-                      route.params.tab === 'transactions'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                    ]"
-                  >
-                    Transactions
-                  </router-link>
-                </li>
-                <li>
-                  <router-link
-                    to="purchase"
-                    :class="[
-                      'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
-                      route.params.tab === 'purchase'
-                        ? 'bg-neutral-700 text-white'
-                        : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
-                    ]"
-                  >
-                    Purchase Coins
-                  </router-link>
-                </li>
-              </ul>
-            </div>
+          <div class="">
+            <ul class="flex lg:flex-col text-nowrap gap-2 p-2 overflow-x-auto">
+              <li>
+                <router-link
+                  to="general"
+                  :class="[
+                    'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
+                    route.params.tab === 'general'
+                      ? 'bg-neutral-700 text-white'
+                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+                  ]"
+                >
+                  General
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="account"
+                  :class="[
+                    'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
+                    route.params.tab === 'account'
+                      ? 'bg-neutral-700 text-white'
+                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+                  ]"
+                >
+                  Account
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="transactions"
+                  :class="[
+                    'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
+                    route.params.tab === 'transactions'
+                      ? 'bg-neutral-700 text-white'
+                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+                  ]"
+                >
+                  Transactions
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="purchase"
+                  :class="[
+                    'w-full text-left px-4 py-2 rounded-lg transition-colors inline-block',
+                    route.params.tab === 'purchase'
+                      ? 'bg-neutral-700 text-white'
+                      : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200',
+                  ]"
+                >
+                  Purchase Coins
+                </router-link>
+              </li>
+            </ul>
           </div>
         </nav>
 

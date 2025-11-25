@@ -18,7 +18,7 @@
           >
             {{ editorLayout === 'h' ? '=' : '- -' }}
           </button>
-          <button @click="closeModal" class="cursor-pointer size-6 pointer-events-auto">
+          <button @click="emit('close')" class="cursor-pointer size-6 pointer-events-auto">
             <XMarkIcon />
           </button>
         </div>
@@ -127,7 +127,7 @@
       @touchend.prevent="stopDrawing"
       @touchcancel.prevent="stopDrawing"
       @contextmenu.prevent
-      @wheel.prevent="handleWheel"
+      @wheel.prevent="(e) => emit('wheel', e)"
       :class="{ 'pointer-events-none': !editorStore.tool, 'pointer-events-auto': editorStore.tool }"
       style="image-rendering: pixelated"
     />
@@ -161,7 +161,7 @@
         </div>
         <div class="flex justify-center gap-4">
           <button
-            @click="done"
+            @click="emit('done')"
             :disabled="editorStore.tool === 'code' || !isFilledEnough"
             class="border-current border disabled:opacity-50 rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
           >
@@ -197,7 +197,7 @@ const tools = [
   { name: 'eraser', icon: EraseIcon },
   { name: 'fill', icon: FillIcon },
   { name: 'code', icon: SparkleIcon },
-] as const //cursor-custom?, save in localstorage
+] as const
 
 const { top, left, size, palette } = defineProps<{
   top: number
@@ -205,23 +205,12 @@ const { top, left, size, palette } = defineProps<{
   size: number
   palette: string[]
 }>()
+
 const emit = defineEmits<{
   close: []
   done: []
   wheel: [event: WheelEvent]
 }>()
-
-function closeModal() {
-  emit('close')
-}
-
-function done() {
-  emit('done')
-}
-
-function handleWheel(event: WheelEvent) {
-  emit('wheel', event)
-}
 
 const editorLayout = ref<'h' | 'v'>('v')
 const showGrid = ref(true)
@@ -304,5 +293,10 @@ function applyExpression() {
 
 onMounted(drawCanvas)
 watch([showGrid, pixelSize], () => nextTick(drawCanvas))
+watch(
+  () => palette,
+  () => editorStore.setPalette(palette),
+  { immediate: true },
+)
 editorStore.$subscribe(drawCanvas)
 </script>

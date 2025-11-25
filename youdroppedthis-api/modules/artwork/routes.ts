@@ -65,14 +65,14 @@ artworkRouter.post("/collect/:id", async (ctx) => {
       return;
     }
     ctx.response.body = { artwork, userProfile };
-  } catch {
+  } catch (error) {
     ctx.response.status = 500;
-    ctx.response.body = { error: "" };
+    ctx.response.body = { error };
   }
 });
 
-artworkRouter.get("/placed", async (ctx) => {
-  const userId = ctx.state.user.id;
+artworkRouter.get("/placed/:userId", async (ctx) => {
+  const userId = ctx.params.userId;
   const limit = parseInt(ctx.request.url.searchParams.get("limit") || "16");
   const page = parseInt(ctx.request.url.searchParams.get("page") || "0");
   try {
@@ -84,12 +84,12 @@ artworkRouter.get("/placed", async (ctx) => {
     ctx.response.body = { artworks };
   } catch {
     ctx.response.status = 500;
-    ctx.response.body = { error: "Failed to get canvas state" };
+    ctx.response.body = { error: "Failed to get users placed artworks" };
   }
 });
 
-artworkRouter.get("/collected", async (ctx) => {
-  const userId = ctx.state.user.id;
+artworkRouter.get("/collected/:userId", async (ctx) => {
+  const userId = ctx.params.userId;
   const limit = parseInt(ctx.request.url.searchParams.get("limit") || "16");
   const page = parseInt(ctx.request.url.searchParams.get("page") || "0");
   try {
@@ -101,6 +101,6 @@ artworkRouter.get("/collected", async (ctx) => {
     ctx.response.body = { artworks };
   } catch {
     ctx.response.status = 500;
-    ctx.response.body = { error: "Failed to get canvas state" };
+    ctx.response.body = { error: "Failed to get users collected artworks" };
   }
 });

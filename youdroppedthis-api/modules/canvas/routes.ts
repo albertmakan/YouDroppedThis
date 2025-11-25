@@ -3,6 +3,16 @@ import { CanvasService } from "./service.ts";
 
 export const canvasRouter = new Router();
 
+canvasRouter.get("/", async (ctx) => {
+  try {
+    const topCanvases = await CanvasService.getTopCanvases();
+    ctx.response.body = topCanvases;
+  } catch {
+    ctx.response.status = 500;
+    ctx.response.body = { error: "Failed to get canvases" };
+  }
+});
+
 canvasRouter.get("/:id/info", async (ctx) => {
   const canvasId = parseInt(ctx.params.id);
   if (!canvasId) {

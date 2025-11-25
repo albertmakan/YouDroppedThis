@@ -1,18 +1,5 @@
 <template>
   <div class="w-full h-screen overflow-hidden">
-    <div
-      class="fixed flex gap-2 items-center top-0 left-0 rounded-br-md backdrop-blur-xl text-primary bg-black/50 p-2 z-10 font-bold"
-    >
-      <button @click="drawerRef?.openDrawer" class="size-5 cursor-pointer hover:bg-neutral-800">
-        <MenuIcon />
-      </button>
-      YouDroppedThis
-    </div>
-
-    <div class="fixed top-0 right-0 p-2 z-20">
-      <ProfileButton />
-    </div>
-
     <div class="fixed bottom-0 left-0 p-2 z-10">
       <div
         v-if="showInfo"
@@ -43,8 +30,6 @@
         {{ Math.floor((viewBounds.y1 + viewBounds.y2) / 2) }})
         <span class="text-neutral-500">•</span>
         🔍{{ Math.round(zoom * 100) }}%
-        <span class="text-neutral-500">•</span>
-        🎨{{ visibleArtworks }}
       </button>
     </div>
 
@@ -118,6 +103,7 @@
     <ArtworkInfoPopup
       v-if="locationPreview && selectedLocation?.artwork"
       :artwork="selectedLocation.artwork"
+      @collect="collectArtwork"
       :top="locationPreview.y"
       :left="locationPreview.x"
       :size="zoomedArtSize"
@@ -129,17 +115,15 @@
       :top="editorRelativeLocation.y"
       :left="editorRelativeLocation.x"
       :size="zoomedArtSize"
-      :palette="canvasStore.canvasInfo?.palette ?? DEFAULT_PALETTE"
+      :palette="canvasInfo?.palette ?? DEFAULT_PALETTE"
       @wheel="handleWheel"
     />
-    <Drawer ref="drawer" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch, useTemplateRef, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick, toRef } from 'vue'
 import {
-  ART_SIZE,
   CANVAS_BACKGROUND,
   CHUNK_SIZE,
   DEFAULT_PALETTE,
@@ -150,35 +134,44 @@ import {
 } from '@/stores/canvas'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
-import { artworkApi } from '@/services/api'
 import type { Artwork } from '@/shared/types'
-import ProfileButton from '@/components/User/ProfileButton.vue'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
 import { createOffscreenCanvas, renderParticles } from '../Artwork/renderArtwork'
 import ArtworkInfoPopup from '../Artwork/ArtworkInfoPopup.vue'
 import DrawIcon from '../Icons/DrawIcon.vue'
-import Drawer from '../Layout/Drawer.vue'
-import MenuIcon from '../Icons/MenuIcon.vue'
 import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { useToast } from '@/composables/useToast'
 import f from '@/utils/builtInFunctions'
 import type { AxiosError } from 'axios'
+import { useCanvas } from '@/composables/useCanvases'
+import { useCollectArtwork, usePlaceArtwork } from '@/composables/useUserArtworks'
+
+const props = defineProps<{
+  canvasId: number
+  x: number
+  y: number
+  z?: number
+  selected?: boolean
+}>()
+
+const canvasId = toRef(props, 'canvasId')
+const { data: canvasInfo, isError, error } = useCanvas(canvasId)
+const { mutate: mutatePlaceArtwork } = usePlaceArtwork(canvasId)
+const { mutate: mutateCollectArtwork } = useCollectArtwork(canvasId)
 
 const toast = useToast()
 
 const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
 const editorStore = useEditorStore()
-const route = useRoute()
 const router = useRouter()
 
 // Canvas refs and state
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const ctx = ref<CanvasRenderingContext2D | null>(null)
-const drawerRef = useTemplateRef<InstanceType<typeof Drawer>>('drawer')
 
 // View state
 const viewX = ref(0)
@@ -187,7 +180,7 @@ const viewportWidth = ref(window.innerWidth)
 const viewportHeight = ref(window.innerHeight)
 const zoom = ref(1)
 const lastZoom = ref(1)
-const zoomedArtSize = computed(() => ART_SIZE * zoom.value)
+const zoomedArtSize = computed(() => 64 * zoom.value)
 const zoomedChunkSize = computed(() => zoomedArtSize.value * CHUNK_SIZE)
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
@@ -208,7 +201,7 @@ const canvasBounds = computed(() => {
     max_x = Infinity,
     min_y = -Infinity,
     max_y = Infinity,
-  } = canvasStore.canvasInfo ?? {}
+  } = canvasInfo.value ?? {}
   return { min_x, max_x, min_y, max_y }
 })
 
@@ -226,21 +219,13 @@ const editorRelativeLocation = computed(
 )
 
 watch(
-  () => route.query,
-  ({ x: qx, y: qy, z: qz, selected }) => {
-    const x = +(qx ?? '')
-    const y = +(qy ?? '')
-    const z = qz ? +qz : undefined
+  () => props,
+  ({ canvasId, x, y, z, selected }) => {
+    canvasStore.switchCanvas(canvasId)
     setLocation(x, y, z)
-    if (selected !== undefined) setSelectedLocation({ x, y })
+    if (selected) setSelectedLocation({ x, y })
   },
-  { deep: true },
-)
-watch(
-  () => route.params.id,
-  (id) => {
-    canvasStore.switchCanvas(+id || 1)
-  },
+  { deep: true, immediate: true },
 )
 
 const chunks = computed(() => {
@@ -253,11 +238,13 @@ const chunks = computed(() => {
   const cy2 = Math.floor(
     Math.min((viewY.value + viewportHeight.value) / zoomedChunkSize.value, max_y / CHUNK_SIZE),
   )
-  for (let cx = cx1; cx <= cx2; cx++) {
-    for (let cy = cy1; cy <= cy2; cy++) {
-      const chunk = canvasStore.getChunk(cx, cy)
-      if (!chunk?.arts && !chunk?.isLoading) {
-        canvasStore.loadChunk(cx, cy, zoom.value)
+  if (canvasInfo.value) {
+    for (let cx = cx1; cx <= cx2; cx++) {
+      for (let cy = cy1; cy <= cy2; cy++) {
+        const chunk = canvasStore.getChunk(cx, cy)
+        if (!chunk?.arts && !chunk?.isLoading) {
+          canvasStore.loadChunk(cx, cy, zoom.value)
+        }
       }
     }
   }
@@ -317,27 +304,54 @@ function openEditorAtNewLocation() {
 }
 
 async function placeArtwork() {
+  if (!editorStore.location) {
+    return
+  }
   if (!authStore.user) {
     toast.warning('Please log in to place artwork')
     return
   }
-  if (!canvasStore.currentCanvasId || !editorStore.location) {
-    return
-  }
-  try {
-    const response = await artworkApi.placeArtwork(canvasStore.currentCanvasId, {
+  mutatePlaceArtwork(
+    {
       pixelData: editorStore.getPixelData(),
       ...editorStore.location,
-    })
-    editorStore.isOpen = false
-    editorStore.location = null
-    editorStore.clearCanvas()
-    authStore.setProfileInfo(response.userProfile)
-  } catch (error) {
-    toast.error(
-      'Failed to place artwork: ' + JSON.stringify((error as AxiosError).response?.data, null, 4),
-    )
+    },
+    {
+      onSuccess: (response) => {
+        editorStore.isOpen = false
+        editorStore.location = null
+        editorStore.clearCanvas()
+        authStore.setProfileInfo(response.userProfile)
+      },
+      onError: (error) => {
+        toast.error(
+          'Failed to place artwork: ' +
+            JSON.stringify((error as AxiosError).response?.data, null, 4),
+        )
+      },
+    },
+  )
+}
+
+async function collectArtwork() {
+  if (!selectedLocation.value?.artwork) {
+    return
   }
+  if (!authStore.user) {
+    toast.warning('Please log in to collect artwork')
+    return
+  }
+  mutateCollectArtwork(selectedLocation.value.artwork.id, {
+    onSuccess: (response) => {
+      authStore.setProfileInfo(response.userProfile)
+    },
+    onError: (error) => {
+      toast.error(
+        'Failed to collect artwork: ' +
+          JSON.stringify((error as AxiosError).response?.data, null, 4),
+      )
+    },
+  })
 }
 
 // Canvas rendering
@@ -361,7 +375,7 @@ function renderCanvas() {
   const context = ctx.value
 
   // Clear canvas
-  context.fillStyle = canvasStore.canvasInfo?.background_color || CANVAS_BACKGROUND
+  context.fillStyle = canvasInfo.value?.background_color || CANVAS_BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   // Draw grid
@@ -610,11 +624,6 @@ onMounted(() => {
   window.addEventListener('resize', resize)
   resize()
 
-  const { id } = route.params
-  canvasStore.switchCanvas(+id || 1)
-  const { x, y, z } = route.query
-  setLocation(+(x ?? ''), +(y ?? ''), z ? +z : undefined)
-
   canvasStore.callbacks.onArtworkPlaced = (artwork) => {
     if (editorStore.location?.x === artwork.x && editorStore.location.y === artwork.y) {
       editorLocationTaken.value = true
@@ -628,9 +637,5 @@ onMounted(() => {
     }
     window.removeEventListener('resize', resize)
   })
-})
-
-onBeforeRouteLeave((to, from) => {
-  console.log('leaving route', to, from)
 })
 </script>

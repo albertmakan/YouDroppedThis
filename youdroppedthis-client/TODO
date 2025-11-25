@@ -30,15 +30,10 @@
 - validate pixel data
 - particle limit, 1/256 piece of oc?
 - collectible after time
-
-- @tanstack/vue-query (for profiles, collections and transactions)
+- @tanstack/vue-query (for profiles, collections and transactions), invalidate on placement, profile mutations
+- test multi canvas
+- improve rate limiter
 
 - buying coins ~ // payment processor
-- improve rate limiter (cron?)
-- sending full artwork vs id when created??
-- Multi-Level Caching?
-- notifications?
-- define economy
-- daily themes
 
 - deploy on cloud

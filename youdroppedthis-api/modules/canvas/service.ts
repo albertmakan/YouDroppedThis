@@ -3,6 +3,17 @@ import type { Artwork } from "../artwork/model.ts";
 import type { Canvas } from "./model.ts";
 
 export class CanvasService {
+  static async getTopCanvases() {
+    const db = getDB();
+
+    const result = await db.queryObject<
+      Pick<Canvas, "id" | "name" | "background_color">
+    >`
+      SELECT id, name, background_color FROM app.canvases`;
+
+    return result.rows;
+  }
+
   static async getCanvasInfo(id: number) {
     const db = getDB();
 

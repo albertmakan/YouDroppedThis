@@ -1,12 +1,5 @@
 import axios from 'axios'
-import type {
-  Profile,
-  Artwork,
-  CanvasInfo,
-  Transaction,
-  PlacementRequest,
-  PixelData,
-} from '@/shared/types'
+import type { Profile, Artwork, CanvasInfo, Transaction, PixelData } from '@/shared/types'
 import { supabase } from './supabase'
 
 const api = axios.create({
@@ -50,6 +43,11 @@ export const authApi = {
 }
 
 export const canvasApi = {
+  async getTopCanvases() {
+    const response = await api.get(`/canvases`)
+    return response.data as Pick<CanvasInfo, 'id' | 'name' | 'background_color'>[]
+  },
+
   async getCanvasInfo(id: number) {
     const response = await api.get(`/canvases/${id}/info`)
     return response.data as CanvasInfo
@@ -62,6 +60,12 @@ export const canvasApi = {
     const response = await api.get(`/canvases/${id}/area`, { params: bounds })
     return response.data as { artworks: Artwork[] }
   },
+}
+
+export interface PlacementRequest {
+  x: number
+  y: number
+  pixelData: PixelData
 }
 
 export const artworkApi = {
@@ -82,12 +86,13 @@ export const artworkApi = {
   },
 
   async getUserArtworks(
+    userId: string,
     type: 'placed' | 'collected' = 'placed',
     page: number = 1,
     limit: number = 16,
   ) {
-    const response = await api.get(`/artworks/${type}`, { params: { page, limit } })
-    return response.data as { artworks: Artwork[]; total: number }
+    const response = await api.get(`/artworks/${type}/${userId}`, { params: { page, limit } })
+    return response.data as { artworks: Artwork[] }
   },
 }
 
@@ -103,6 +108,13 @@ export const userApi = {
   },
 }
 
+export interface TransactionResult {
+  success: boolean
+  message: string
+  newBalance?: number
+  userId: string
+}
+
 export const transactionApi = {
   async getTransactions(page: number = 20, limit: number = 0) {
     const response = await api.get('/transactions', { params: { page, limit } })
@@ -111,12 +123,12 @@ export const transactionApi = {
 
   async claimDailyBonus() {
     const response = await api.post('/transactions/daily-bonus')
-    return response.data as { success: boolean; message: string; newBalance?: number }
+    return response.data as TransactionResult
   },
 
   // temporary
   async purchaseCoins(amount: number) {
     const response = await api.post('/transactions/purchase', { amount })
-    return response.data as { success: boolean; message: string; newBalance?: number }
+    return response.data as TransactionResult
   },
 }

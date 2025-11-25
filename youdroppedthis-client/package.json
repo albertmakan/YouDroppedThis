@@ -23,6 +23,7 @@
     "@supabase/auth-js": "^2.76.1",
     "@supabase/realtime-js": "^2.76.1",
     "@supabase/supabase-js": "^2.76.1",
+    "@tanstack/vue-query": "^5.91.2",
     "@vueuse/core": "^13.9.0",
     "axios": "^1.11.0",
     "pinia": "^3.0.3",

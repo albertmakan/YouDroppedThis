@@ -31,7 +31,7 @@
       >
         <button
           v-if="isCollectable"
-          @click="collectArtwork"
+          @click="emit('collect')"
           @touchmove.prevent.passive
           class="cursor-pointer pointer-events-auto size-8"
           title="Collect"
@@ -46,23 +46,20 @@
 <script setup lang="ts">
 import type { Artwork } from '@/shared/types'
 import CollectIcon from '../Icons/CollectIcon.vue'
-import { useAuthStore } from '@/stores/auth'
-import { artworkApi } from '@/services/api'
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import TimeRemainingIcon from '../Icons/TimeRemainingIcon.vue'
 import { getH_M_S } from '@/utils/date'
-import { useToast } from '@/composables/useToast'
 import ProfileCard from '../User/ProfileCard.vue'
-
-const toast = useToast()
-
-const authStore = useAuthStore()
 
 const { top, left, size, artwork } = defineProps<{
   top: number
   left: number
   size: number
   artwork: Artwork
+}>()
+
+const emit = defineEmits<{
+  collect: []
 }>()
 
 const timeInfo = computed(() => {
@@ -75,19 +72,6 @@ const timeInfo = computed(() => {
 })
 const timeRemaining = ref({ p: 1, s: '' })
 const isCollectable = ref(false)
-
-async function collectArtwork() {
-  if (!authStore.user) {
-    toast.warning('Please log in to collect artwork')
-    return
-  }
-  try {
-    const response = await artworkApi.collectArtwork(artwork.canvas_id, artwork.id)
-    authStore.setProfileInfo(response.userProfile)
-  } catch (error) {
-    toast.error('Failed to collect artwork: ' + JSON.stringify(error))
-  }
-}
 
 function updateTime() {
   const now = Date.now()

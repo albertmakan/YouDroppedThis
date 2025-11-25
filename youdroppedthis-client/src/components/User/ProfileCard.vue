@@ -7,10 +7,11 @@
 </template>
 
 <script setup lang="ts">
-import { useProfile } from '@/stores/profiles'
+import { useProfile } from '@/composables/useProfiles'
 import ProfilePicture from './ProfilePicture.vue'
+import { toRef } from 'vue'
 
-const { userId } = defineProps<{ userId: string }>()
+const props = defineProps<{ userId: string }>()
 
-const { profile, isLoading: profileLoading } = useProfile(userId)
+const { data: profile, isLoading: profileLoading } = useProfile(toRef(props, 'userId'))
 </script>

@@ -18,11 +18,12 @@ export const useEditorStore = defineStore('editor', () => {
   const canUndo = computed(() => historyStep.value > 0)
   const canRedo = computed(() => historyStep.value < history.value.length - 1)
 
-  const context = {
+  const context = ref({
     x: 0,
     y: 0,
     pixel: (x: number, y: number) => pixels.value[y]?.[x] ?? emptyPixel,
-  }
+    palette: ['#ffffff'],
+  })
 
   const resolution = computed({
     get: () => pixels.value.length,
@@ -95,6 +96,10 @@ export const useEditorStore = defineStore('editor', () => {
     return true
   }
 
+  function setPalette(palette: string[]) {
+    context.value.palette = palette
+  }
+
   function clearCanvas() {
     pixels.value = Array.from({ length: resolution.value }, () =>
       Array.from({ length: resolution.value }, () => emptyPixel),
@@ -105,12 +110,13 @@ export const useEditorStore = defineStore('editor', () => {
     const { tokens, errorFound } = tokenize(expression.value)
     if (errorFound) return
     const postfix = tokensToPostfix(tokens)
+    const variables = { ...context.value }
     const newPixels = pixels.value.map((r) => [...r])
     for (let y = 0; y < resolution.value; y++) {
       for (let x = 0; x < resolution.value; x++) {
-        context.x = x
-        context.y = y
-        const color = solvePostfix(postfix, context)
+        variables.x = x
+        variables.y = y
+        const color = solvePostfix(postfix, variables)
         newPixels[y][x] =
           typeof color === 'string' && color.match(/^(#[0-9A-Fa-f]{6}|)$/) ? color : emptyPixel
       }
@@ -152,5 +158,6 @@ export const useEditorStore = defineStore('editor', () => {
     undo,
     redo,
     offscreenCanvas,
+    setPalette,
   }
 })

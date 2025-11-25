@@ -1,7 +1,7 @@
 <template>
-  <div class="fixed inset-0 flex items-center z-50 bg-black/50" @click="closeModal">
+  <div class="fixed inset-0 flex items-center z-50 bg-black/50 p-4" @click="closeModal">
     <div
-      class="bg-black text-neutral-200 rounded-lg m-auto p-4 w-fit border border-neutral-600"
+      class="bg-black text-neutral-200 rounded-lg m-auto max-w-screen max-h-screen overflow-y-auto p-4 w-fit border border-neutral-600"
       @click.stop
     >
       <div class="flex w-full justify-between items-center gap-4 text-2xl">
@@ -18,9 +18,7 @@ import XMarkIcon from '../Icons/XMarkIcon.vue'
 
 defineProps<{ title?: string }>()
 
-const emit = defineEmits<{
-  close: []
-}>()
+const emit = defineEmits<{ close: [] }>()
 
 function closeModal() {
   emit('close')

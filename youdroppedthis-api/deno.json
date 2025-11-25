@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "start": "deno run --allow-net --allow-env --env-file --unstable-cron main.ts",
-    "dev": "deno run --allow-net --allow-env --env-file --unstable-cron --watch main.ts"
+    "start": "deno run --allow-net --allow-env --env-file --unstable-kv main.ts",
+    "dev": "deno run --allow-net --allow-env --env-file --unstable-kv --watch main.ts"
   },
   "imports": {
     "oak": "https://deno.land/x/oak@v12.6.1/mod.ts",

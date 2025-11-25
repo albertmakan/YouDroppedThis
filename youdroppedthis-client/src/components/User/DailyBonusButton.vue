@@ -11,16 +11,17 @@
 </template>
 
 <script setup lang="ts">
-import { transactionApi } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { computed, ref } from 'vue'
 import GiftIcon from '../Icons/GiftIcon.vue'
 import { useToast } from '@/composables/useToast'
+import { useClaimDailyBonus } from '@/composables/useUserTransactions'
+
+const { mutate: mutateClaimDailyBonus, isPending: bonusLoading } = useClaimDailyBonus()
 
 const toast = useToast()
 
 const authStore = useAuthStore()
-const bonusLoading = ref(false)
 const lastBonusTime = ref<string | null>(localStorage.getItem('last_bonus_claim'))
 
 const canClaimBonus = computed(() => {
@@ -34,20 +35,20 @@ const canClaimBonus = computed(() => {
 })
 
 async function handleClaimBonus() {
-  try {
-    bonusLoading.value = true
-    const result = await transactionApi.claimDailyBonus()
-
-    if (result.success && result.newBalance) {
-      authStore.setProfileInfo({ balance: result.newBalance })
-      lastBonusTime.value = new Date().toISOString()
-      localStorage.setItem('last_bonus_claim', lastBonusTime.value)
-      toast.success(`🎁 ${result.message}`)
-    }
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to claim bonus')
-  } finally {
-    bonusLoading.value = false
-  }
+  mutateClaimDailyBonus(undefined, {
+    onSuccess: (result) => {
+      if (result.success && result.newBalance) {
+        authStore.setProfileInfo({ balance: result.newBalance })
+        lastBonusTime.value = new Date().toISOString()
+        localStorage.setItem('last_bonus_claim', lastBonusTime.value)
+        toast.success(`🎁 ${result.message}`)
+      } else {
+        toast.warning(result.message)
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to claim bonus')
+    },
+  })
 }
 </script>
