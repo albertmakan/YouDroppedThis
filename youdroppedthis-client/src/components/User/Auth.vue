@@ -96,7 +96,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import XMarkIcon from '../Icons/XMarkIcon.vue'
+import XMarkIcon from '@/assets/icons/xmark.svg'
 
 const props = withDefaults(
   defineProps<{

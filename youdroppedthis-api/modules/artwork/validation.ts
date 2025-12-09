@@ -1,16 +1,18 @@
 import { z } from "../../deps.ts";
 
+export const colorSchema = z
+  .string()
+  .regex(
+    /^(#[0-9A-Fa-f]{6}|)$/,
+    "Colors must be in hex format (#RRGGBB) or empty string for transparent"
+  );
+
 export const placementSchema = z.object({
   x: z.number().int(),
   y: z.number().int(),
   pixelData: z
     .object({
-      palette: z
-        .string()
-        .regex(
-          /^(#[0-9A-Fa-f]{6}|)$/,
-          "Colors must be in hex format (#RRGGBB) or empty string for transparent"
-        ) // Allow empty string
+      palette: colorSchema
         .array()
         .min(1, "Palette must have at least one color")
         .max(256, "Palette cannot exceed 256 colors"),

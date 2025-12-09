@@ -5,28 +5,24 @@ A collaborative pixel art canvas where users can place temporary artworks that o
 ## Quick Start
 
 ### Backend (Deno)
+
 ```bash
-cd backend
-chmod +x start.sh
-./start.sh
+cd youdroppedthis-api
+deno task dev
 ```
 
 ### Frontend (Vue3)
+
 ```bash
-cd frontend
+cd youdroppedthis-client
 npm install
 npm run dev
-```
-
-### Database
-```bash
-docker-compose up -d postgres
 ```
 
 ## Features
 
 - 🎨 **Pixel Art Creation**: Simple editor with multiple resolutions (16x16, 32x32, 64x64)
-- 🗺️ **Infinite Canvas**: Place artwork anywhere on the canvas
+- 🗺️ **Finite Canvas**: Place artwork anywhere on the canvas
 - ⏰ **Time-based Expiration**: Artworks disappear after 24 hours if not collected
 - 💰 **Economy System**: Placement costs coins, collecting is free
 - 🔄 **Real-time Updates**: See changes instantly via WebSockets
@@ -37,6 +33,6 @@ docker-compose up -d postgres
 
 - **Backend**: Deno + Oak (TypeScript)
 - **Frontend**: Vue 3 + Vite + Pinia + Tailwind CSS
-- **Database**: PostgreSQL
-- **Real-time**: WebSockets
-- **Authentication**: JWT tokens
+- **Database**: PostgreSQL (Supabase)
+- **Real-time**: Supabase realtime
+- **Authentication**: Supabase auth

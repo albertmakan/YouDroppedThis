@@ -53,7 +53,7 @@
                 <LocationIcon />
               </router-link>
             </div>
-            <div :style="{ background: CANVAS_BACKGROUND }">
+            <div :style="{ background: selectedArtwork.pixel_data.bg || CANVAS_BACKGROUND }">
               <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
             </div>
             <div
@@ -121,7 +121,7 @@
               v-for="artwork in page.artworks"
               :key="artwork.id"
               class="aspect-square overflow-hidden cursor-pointer sm:w-32"
-              :style="{ background: CANVAS_BACKGROUND }"
+              :style="{ background: artwork.pixel_data.bg || CANVAS_BACKGROUND }"
               tabindex="0"
               @click="selectedArtwork = artwork"
             >
@@ -151,19 +151,19 @@
 
 <script setup lang="ts">
 import { ref, toRef } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import ArtworkThumbnail from '../Artwork/ArtworkThumbnail.vue'
 import type { Artwork } from '@/shared/types'
-import { formatRelativeTime, getH_M_S } from '@/utils/date'
-import XMarkIcon from '../Icons/XMarkIcon.vue'
+import { useAuthStore } from '@/stores/auth'
 import { CANVAS_BACKGROUND } from '@/stores/canvas'
-import PaletteIcon from '../Icons/PaletteIcon.vue'
-import CollectionIcon from '../Icons/CollectionIcon.vue'
 import { useProfile } from '@/composables/useProfiles'
-import LocationIcon from '../Icons/LocationIcon.vue'
+import { ITEMS_PER_PAGE, useUserArtworks } from '@/composables/useUserArtworks'
+import { formatRelativeTime, getH_M_S } from '@/utils/date'
+import XMarkIcon from '@/assets/icons/xmark.svg'
+import PaletteIcon from '@/assets/icons/palette.svg'
+import CollectionIcon from '@/assets/icons/collection.svg'
+import LocationIcon from '@/assets/icons/location.svg'
+import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import ProfilePicture from './ProfilePicture.vue'
 import ProfileCard from './ProfileCard.vue'
-import { ITEMS_PER_PAGE, useUserArtworks } from '@/composables/useUserArtworks'
 
 const props = defineProps<{ userId: string }>()
 

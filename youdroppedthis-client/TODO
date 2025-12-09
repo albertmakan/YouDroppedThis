@@ -33,7 +33,9 @@
 - @tanstack/vue-query (for profiles, collections and transactions), invalidate on placement, profile mutations
 - test multi canvas
 - improve rate limiter
-
-- buying coins ~ // payment processor
+- landing page
+- icons
 
 - deploy on cloud
+
+- buying coins ~ // payment processor

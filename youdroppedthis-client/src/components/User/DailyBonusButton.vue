@@ -11,11 +11,11 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/auth'
 import { computed, ref } from 'vue'
-import GiftIcon from '../Icons/GiftIcon.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useClaimDailyBonus } from '@/composables/useUserTransactions'
+import GiftIcon from '@/assets/icons/gift.svg'
 
 const { mutate: mutateClaimDailyBonus, isPending: bonusLoading } = useClaimDailyBonus()
 

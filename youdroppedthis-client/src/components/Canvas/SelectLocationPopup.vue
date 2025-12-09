@@ -44,9 +44,9 @@
 </template>
 
 <script setup lang="ts">
-import XMarkIcon from '../Icons/XMarkIcon.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import XMarkIcon from '@/assets/icons/xmark.svg'
 
 const props = defineProps<{ minX?: number; maxX?: number; minY?: number; maxY?: number }>()
 

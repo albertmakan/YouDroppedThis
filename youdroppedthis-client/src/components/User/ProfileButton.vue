@@ -44,11 +44,11 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/User/Auth.vue'
-import { ref } from 'vue'
-import SettingsIcon from '../Icons/SettingsIcon.vue'
-import LogoutIcon from '../Icons/LogoutIcon.vue'
+import SettingsIcon from '@/assets/icons/settings.svg'
+import LogoutIcon from '@/assets/icons/logout.svg'
 import ProfilePicture from './ProfilePicture.vue'
 
 const authStore = useAuthStore()

@@ -49,6 +49,7 @@ export class ArtworkService {
     await db.queryArray("BEGIN");
 
     try {
+      pixelData.bg = canvas.background_color;
       // Create artwork
       const artworkResult = await db.queryObject<Artwork>`
         INSERT INTO app.artworks (canvas_id, user_id, x, y, pixel_data, expires_at, collectable_after)

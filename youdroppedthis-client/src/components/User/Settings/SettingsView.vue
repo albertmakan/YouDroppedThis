@@ -96,7 +96,7 @@ import GeneralSettingsView from './GeneralSettingsView.vue'
 import AccountSettingsView from './AccountSettingsView.vue'
 import TransactionsTable from './TransactionsTable.vue'
 import PurchaseView from './PurchaseView.vue'
-import MenuIcon from '@/components/Icons/MenuIcon.vue'
+import MenuIcon from '@/assets/icons/menu.svg'
 import ProfileButton from '../ProfileButton.vue'
 
 const route = useRoute()

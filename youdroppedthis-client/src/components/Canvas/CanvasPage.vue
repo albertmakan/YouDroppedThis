@@ -5,7 +5,7 @@
     <button @click="drawerRef?.openDrawer" class="size-5 cursor-pointer hover:bg-neutral-800">
       <MenuIcon />
     </button>
-    YouDroppedThis
+    <router-link to="/"> YouDroppedThis </router-link>
   </div>
   <div class="fixed top-0 right-0 p-2 z-20">
     <ProfileButton />
@@ -16,10 +16,10 @@
 
 <script setup lang="ts">
 import { watch, useTemplateRef, ref } from 'vue'
-import ProfileButton from '@/components/User/ProfileButton.vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
-import Drawer from '../Layout/Drawer.vue'
-import MenuIcon from '../Icons/MenuIcon.vue'
+import MenuIcon from '@/assets/icons/menu.svg'
+import ProfileButton from '@/components/User/ProfileButton.vue'
+import Drawer from '@/components/Layout/Drawer.vue'
 import CanvasView from './CanvasView.vue'
 
 const drawerRef = useTemplateRef<InstanceType<typeof Drawer>>('drawer')
@@ -45,7 +45,7 @@ watch(
 watch(
   () => route.params.id,
   (id) => {
-    props.value.canvasId = +id || 1
+    props.value.canvasId = +id
   },
   { immediate: true },
 )

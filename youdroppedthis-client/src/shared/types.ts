@@ -3,6 +3,7 @@ import type { Effect, Particle } from '@/utils/physics'
 export type PixelData = {
   palette: string[]
   mat: number[][]
+  bg?: string
 }
 
 export type Profile = {

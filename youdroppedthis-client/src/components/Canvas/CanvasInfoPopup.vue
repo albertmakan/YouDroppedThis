@@ -152,9 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import XMarkIcon from '../Icons/XMarkIcon.vue'
-import type { CanvasInfo } from '@/shared/types'
 import { computed } from 'vue'
+import XMarkIcon from '@/assets/icons/xmark.svg'
+import type { CanvasInfo } from '@/shared/types'
 
 const { canvas } = defineProps<{ canvas: CanvasInfo }>()
 

@@ -74,7 +74,7 @@
     />
     <div
       v-if="locationPreview && !selectedLocation?.artwork"
-      class="fixed pointer-events-none border-2 border-current border-dashed text-neutral-400"
+      class="fixed pointer-events-none border-2 border-current border-dashed text-neutral-400 mix-blend-difference"
       :style="{
         left: `${locationPreview.x}px`,
         top: `${locationPreview.y}px`,
@@ -123,6 +123,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, toRef } from 'vue'
+import { useRouter } from 'vue-router'
+import type { AxiosError } from 'axios'
 import {
   CANVAS_BACKGROUND,
   CHUNK_SIZE,
@@ -135,19 +137,17 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import type { Artwork } from '@/shared/types'
-import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
-import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
-import { useRouter } from 'vue-router'
-import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
-import { createOffscreenCanvas, renderParticles } from '../Artwork/renderArtwork'
-import ArtworkInfoPopup from '../Artwork/ArtworkInfoPopup.vue'
-import DrawIcon from '../Icons/DrawIcon.vue'
-import XMarkIcon from '../Icons/XMarkIcon.vue'
-import { useToast } from '@/composables/useToast'
-import f from '@/utils/builtInFunctions'
-import type { AxiosError } from 'axios'
 import { useCanvas } from '@/composables/useCanvases'
 import { useCollectArtwork, usePlaceArtwork } from '@/composables/useUserArtworks'
+import { useToast } from '@/composables/useToast'
+import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
+import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
+import { createOffscreenCanvas, renderParticles } from '@/components/Artwork/renderArtwork'
+import ArtworkInfoPopup from '@/components/Artwork/ArtworkInfoPopup.vue'
+import DrawIcon from '@/assets/icons/draw.svg'
+import XMarkIcon from '@/assets/icons/xmark.svg'
+import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
+import f from '@/utils/builtInFunctions'
 
 const props = defineProps<{
   canvasId: number
@@ -221,7 +221,13 @@ const editorRelativeLocation = computed(
 watch(
   () => props,
   ({ canvasId, x, y, z, selected }) => {
-    canvasStore.switchCanvas(canvasId)
+    if (canvasId !== canvasStore.currentCanvasId) {
+      canvasStore.switchCanvas(canvasId)
+      selectedLocation.value = null
+      editorStore.isOpen = false
+      editorStore.location = null
+      editorLocationTaken.value = false
+    }
     setLocation(x, y, z)
     if (selected) setSelectedLocation({ x, y })
   },
@@ -382,6 +388,7 @@ function renderCanvas() {
   const gridSize = zoomedArtSize.value
   const { min_x, max_x, min_y, max_y } = canvasBounds.value
   const { x1, y1 } = viewBounds.value
+  context.globalCompositeOperation = 'exclusion'
   context.strokeStyle = GRID_COLOR
   context.fillStyle = GRID_COLOR
   context.lineWidth = 2
@@ -403,6 +410,8 @@ function renderCanvas() {
     }
     yi += 1
   }
+  context.globalCompositeOperation = 'source-over'
+
   let now = ''
   if (renderCount % 100 === 0) {
     now = new Date().toISOString()

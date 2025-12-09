@@ -21,7 +21,7 @@
 
 @layer base {
   html {
-    @apply font-mono;
+    @apply font-mono bg-neutral-950 text-neutral-200;
   }
 }
 

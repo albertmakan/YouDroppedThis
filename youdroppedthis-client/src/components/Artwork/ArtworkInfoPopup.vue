@@ -16,7 +16,15 @@
         <ProfileCard :user-id="artwork.user_id" />
         <div class="relative h-6">
           <button class="size-6 text-neutral-700 cursor-pointer peer">
-            <TimeRemainingIcon :remaining="timeRemaining.p" />
+            <svg viewBox="-1 -1 2 2" class="-rotate-90">
+              <circle r="0.95" cx="0" cy="0" :fill="color" />
+              <path
+                :d="`M 1 0
+                    A 1 1 0 ${timeRemaining.p > 0.5 ? 0 : 1} 1 ${Math.cos(2 * Math.PI * (1 - timeRemaining.p))} ${Math.sin(2 * Math.PI * (1 - timeRemaining.p))}
+                    L 0 0`"
+                fill="currentColor"
+              />
+            </svg>
           </button>
           <div
             class="peer-focus:block hidden active:block absolute top-full left-1/2 -translate-x-1/2 p-1 mt-0.5 bg-black rounded-md text-neutral-200 text-sm shadow-md border border-neutral-600 pointer-events-none"
@@ -44,12 +52,11 @@
 </template>
 
 <script setup lang="ts">
-import type { Artwork } from '@/shared/types'
-import CollectIcon from '../Icons/CollectIcon.vue'
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
-import TimeRemainingIcon from '../Icons/TimeRemainingIcon.vue'
-import { getH_M_S } from '@/utils/date'
+import type { Artwork } from '@/shared/types'
+import CollectIcon from '@/assets/icons/collect.svg'
 import ProfileCard from '../User/ProfileCard.vue'
+import { getH_M_S } from '@/utils/date'
 
 const { top, left, size, artwork } = defineProps<{
   top: number
@@ -71,6 +78,18 @@ const timeInfo = computed(() => {
   return { expirationTime, totalTime, collectableTime }
 })
 const timeRemaining = ref({ p: 1, s: '' })
+const color = computed(() => {
+  const remaining = timeRemaining.value.p
+  return remaining < 0.05
+    ? 'red'
+    : remaining < 0.25
+      ? 'orange'
+      : remaining < 0.5
+        ? 'yellow'
+        : remaining < 0.75
+          ? 'green'
+          : 'darkgreen'
+})
 const isCollectable = ref(false)
 
 function updateTime() {

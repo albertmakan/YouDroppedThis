@@ -140,14 +140,7 @@
         }"
       >
         <div class="flex gap-2 flex-wrap min-w-64 m-auto mb-4 *:pointer-events-auto">
-          <div class="h-6 w-14">
-            <input
-              v-model="editorStore.selectedColor"
-              type="color"
-              class="size-full"
-              title="Primary Color"
-            />
-          </div>
+          <div class="h-6 w-14" :style="{ background: editorStore.selectedColor }"></div>
           <button
             v-for="color in palette"
             :key="color"
@@ -174,20 +167,20 @@
 </template>
 
 <script setup lang="ts">
-import { useEditorStore } from '@/stores/editor'
 import { ref, onMounted, watch, computed, useTemplateRef, nextTick } from 'vue'
-import DrawIcon from '../Icons/DrawIcon.vue'
-import FillIcon from '../Icons/FillIcon.vue'
-import EraseIcon from '../Icons/EraseIcon.vue'
-import XMarkIcon from '../Icons/XMarkIcon.vue'
-import UndoIcon from '../Icons/UndoIcon.vue'
-import RedoIcon from '../Icons/RedoIcon.vue'
-import GridIcon from '../Icons/GridIcon.vue'
-import SparkleIcon from '../Icons/SparkleIcon.vue'
-import ExpressionEditor from '../Editor/ExpressionEditor.vue'
-import CheckmarkIcon from '../Icons/CheckmarkIcon.vue'
-import { renderArtwork } from '../Artwork/renderArtwork'
+import { useEditorStore } from '@/stores/editor'
 import { GRID_COLOR } from '@/stores/canvas'
+import DrawIcon from '@/assets/icons/draw.svg'
+import FillIcon from '@/assets/icons/fill.svg'
+import EraseIcon from '@/assets/icons/erase.svg'
+import XMarkIcon from '@/assets/icons/xmark.svg'
+import UndoIcon from '@/assets/icons/undo.svg'
+import RedoIcon from '@/assets/icons/redo.svg'
+import GridIcon from '@/assets/icons/grid.svg'
+import SparkleIcon from '@/assets/icons/sparkle.svg'
+import CheckmarkIcon from '@/assets/icons/checkmark.svg'
+import ExpressionEditor from '@/components/Editor/ExpressionEditor.vue'
+import { renderArtwork } from '@/components/Artwork/renderArtwork'
 
 const pixelCanvas = useTemplateRef<HTMLCanvasElement>('pixel-canvas')
 
@@ -235,7 +228,8 @@ function drawCanvas() {
   ctx.drawImage(editorStore.offscreenCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height)
   if (showGrid.value) {
     ctx.strokeStyle = GRID_COLOR
-    ctx.lineWidth = 1
+    ctx.globalCompositeOperation = 'difference'
+    ctx.lineWidth = 0.5
     for (let x = 0; x <= resolution; x++) {
       ctx.beginPath()
       ctx.moveTo(x * pixelSize.value, 0)
@@ -248,6 +242,7 @@ function drawCanvas() {
       ctx.lineTo(size, y * pixelSize.value)
       ctx.stroke()
     }
+    ctx.globalCompositeOperation = 'source-over'
   }
 }
 

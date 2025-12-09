@@ -1,6 +1,7 @@
 export type PixelData = {
   palette: string[];
   mat: number[][];
+  bg?: string;
 };
 
 export type Artwork = {

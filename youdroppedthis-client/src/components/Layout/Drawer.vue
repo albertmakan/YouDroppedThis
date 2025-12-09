@@ -76,13 +76,6 @@
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Community
           </h3>
-          <button
-            @click="showAbout = true"
-            class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
-          >
-            <span class="size-5"><InfoIcon /></span>
-            About
-          </button>
           <a
             href="#https://discord.com/invite/youdroppedthis"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
@@ -125,13 +118,6 @@
     :max-y="canvasInfo?.max_y"
   />
   <CanvasInfoPopup v-if="showInfo && canvasInfo" @close="showInfo = false" :canvas="canvasInfo" />
-  <InfoPopup v-if="showAbout" title="About" @close="showAbout = false">
-    <p>YouDroppedThis - Drop Art, Find Treasures</p>
-    <p>Create pixel art and drop it on a shared canvas.</p>
-    <p>Other users can discover and collect your work before it expires in 24 hours.</p>
-    <p>🎨 Create • 🗺️ Explore • 🎯 Collect • ✨ Discover</p>
-    <p>Join our community and be part of the world's most dynamic collaborative art canvas!</p>
-  </InfoPopup>
   <UserCollection
     v-if="showCollection && authStore.user"
     @close="showCollection = false"
@@ -141,22 +127,20 @@
 
 <script setup lang="ts">
 import { ref, toRef, watch } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import MenuIcon from '../Icons/MenuIcon.vue'
-import StatsIcon from '../Icons/StatsIcon.vue'
-import LocationIcon from '../Icons/LocationIcon.vue'
-import CollectionIcon from '../Icons/CollectionIcon.vue'
-import CoinsIcon from '../Icons/CoinsIcon.vue'
-import InfoIcon from '../Icons/InfoIcon.vue'
-import MessageIcon from '../Icons/MessageIcon.vue'
-import SelectLocationPopup from '../Canvas/SelectLocationPopup.vue'
-import CanvasInfoPopup from '../Canvas/CanvasInfoPopup.vue'
-import InfoPopup from './InfoPopup.vue'
-import DailyBonus from '../User/DailyBonusButton.vue'
-import UserCollection from '../User/UserCollection.vue'
-import { useCanvas, useTopCanvases } from '@/composables/useCanvases'
-import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import type { AxiosError } from 'axios'
+import { CANVAS_BACKGROUND } from '@/stores/canvas'
+import { useAuthStore } from '@/stores/auth'
+import { useCanvas, useTopCanvases } from '@/composables/useCanvases'
+import MenuIcon from '@/assets/icons/menu.svg'
+import StatsIcon from '@/assets/icons/stats.svg'
+import LocationIcon from '@/assets/icons/location.svg'
+import CollectionIcon from '@/assets/icons/collection.svg'
+import CoinsIcon from '@/assets/icons/coins.svg'
+import MessageIcon from '@/assets/icons/message.svg'
+import SelectLocationPopup from '@/components/Canvas/SelectLocationPopup.vue'
+import CanvasInfoPopup from '@/components/Canvas/CanvasInfoPopup.vue'
+import DailyBonus from '@/components/User/DailyBonusButton.vue'
+import UserCollection from '@/components/User/UserCollection.vue'
 
 const props = defineProps<{ canvasId?: number }>()
 
@@ -166,7 +150,6 @@ const { data: topCanvases } = useTopCanvases()
 
 const isOpen = ref(false)
 const showInfo = ref(false)
-const showAbout = ref(false)
 const showCollection = ref(false)
 const isLocationPopupOpen = ref(false)
 
