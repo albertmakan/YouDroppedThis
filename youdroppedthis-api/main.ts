@@ -33,7 +33,7 @@ const app = new Application();
 // CORS
 app.use(
   oakCors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: Deno.env.get("ALLOW_ORIGIN"),
     credentials: true,
   })
 );
