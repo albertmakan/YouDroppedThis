@@ -13,8 +13,17 @@ export async function initDatabase() {
 
   await client.connect();
   console.log("📊 Database connected");
+  const result = await client.queryObject("SELECT NOW()");
+  console.log("✅ Query test:", result.rows);
 }
 
 export function getDB() {
   return client;
+}
+
+export async function closeDatabase() {
+  if (client) {
+    await client.end();
+    console.log("Database connection closed");
+  }
 }

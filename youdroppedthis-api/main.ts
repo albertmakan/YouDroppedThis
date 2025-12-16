@@ -1,5 +1,5 @@
 import { Application, Router, oakCors } from "./deps.ts";
-import { initDatabase } from "./config/database.ts";
+import { closeDatabase, initDatabase } from "./config/database.ts";
 import { initSupabase } from "./config/supabase.ts";
 import { authMiddleware } from "./middleware/auth.ts";
 import { rateLimitMiddleware } from "./middleware/rateLimit.ts";
@@ -45,6 +45,10 @@ app.use(router.routes());
 
 // Initialize services
 await initDatabase();
+Deno.addSignalListener("SIGINT", async () => {
+  await closeDatabase();
+  Deno.exit();
+});
 initSupabase();
 
 const PORT = parseInt(Deno.env.get("PORT") || "8000");

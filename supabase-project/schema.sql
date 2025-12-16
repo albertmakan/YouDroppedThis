@@ -228,7 +228,6 @@ CREATE TABLE IF NOT EXISTS "app"."canvases" (
     "max_x" integer,
     "min_y" integer,
     "max_y" integer,
-    "grid_size" integer DEFAULT 64,
     "premium_zone_enabled" boolean DEFAULT false,
     "description" "text",
     "theme" character varying,
