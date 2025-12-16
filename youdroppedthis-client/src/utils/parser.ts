@@ -28,7 +28,7 @@ function isLetter(char: string) {
 
 function tokenize(expr: string) {
   let pos = 0
-  let peek = expr.at(pos)
+  let peek = expr[pos]
   let state: State = 'idle'
   let start = -1
   let errorFound = false
@@ -39,7 +39,7 @@ function tokenize(expr: string) {
 
   const addOperandToken = (dataType?: 'b' | 'n' | 's') => {
     let value
-    if (dataType === 'b') value = expr.at(start) === 'T'
+    if (dataType === 'b') value = expr[start] === 'T'
     else if (dataType === 'n') value = +expr.substring(start, pos)
     else if (dataType === 's') value = currentString.join('')
     else value = expr.substring(start, pos).split('.')
@@ -50,7 +50,7 @@ function tokenize(expr: string) {
     errorFound = true
   }
 
-  while ((peek = expr.at(pos++))) {
+  while ((peek = expr[pos++])) {
     if (state === 'string') {
       if (esc) {
         esc = false
@@ -92,17 +92,17 @@ function tokenize(expr: string) {
       } else if (isDigit(peek)) {
         state = 'number'
       } else if (peek === 'T' || peek === 'F') {
-        const next = expr.at(pos)
+        const next = expr[pos]
         if (next && (isDigit(next) || isLetter(next) || next === '.')) state = 'ident'
         else addOperandToken('b')
       } else if (isLetter(peek)) {
         state = 'ident'
       } else if (peek === '.') {
-        const next = expr.at(pos)
+        const next = expr[pos]
         if (next && isLetter(next)) state = 'ident'
         else state = 'decimal'
       } else if (peek === '>' || peek === '<' || peek === '!') {
-        if (expr.at(pos) === '=') {
+        if (expr[pos] === '=') {
           tokens.push({
             type: 'OPERATOR',
             precedence: 3,
@@ -139,7 +139,7 @@ function tokenize(expr: string) {
     if (state === 'decimal' && start === pos - 1) addErrorToken('.')
     else addOperandToken(state === 'ident' ? undefined : state === 'string' ? 's' : 'n')
     if (state === 'string') {
-      tokens.at(-1)!.error = 'unterminated string'
+      tokens[tokens.length - 1]!.error = 'unterminated string'
     }
   }
   tokens.push({ type: 'END', value: '', start: expr.length, end: expr.length })
@@ -162,7 +162,7 @@ function tokenize(expr: string) {
           !(
             token.type === 'RPAREN' &&
             previousTokenType === 'LPAREN' &&
-            parenStack.at(-1)?.value === '['
+            parenStack[parenStack.length - 1]?.value === '['
           )
         ) {
           errorFound = true
@@ -183,7 +183,7 @@ function tokenize(expr: string) {
         if (lp.value === '[') token.value = ']'
       }
     } else if (token.type === 'OPERATOR' && token.value === ',') {
-      if (parenStack.length === 0 || parenStack.at(-1)?.value !== '[') {
+      if (parenStack.length === 0 || parenStack[parenStack.length - 1]?.value !== '[') {
         errorFound = true
         token.type = 'ERROR'
       } else token.depth = parenStack.length - 1
@@ -191,7 +191,7 @@ function tokenize(expr: string) {
 
     previousTokenType = token.type
   }
-  const lastTokenType = tokens.at(-2)?.type
+  const lastTokenType = tokens[tokens.length - 2]?.type
   if (lastTokenType !== 'OPERAND' && lastTokenType !== 'RPAREN') {
     errorFound = true
   }
@@ -212,7 +212,8 @@ function tokensToPostfix(tokens: Token[]) {
       result.push(token)
     } else if (token.type === 'LPAREN') {
       if (token.value === '[') {
-        while (stack.length > 0 && (stack.at(-1)?.precedence ?? 0) >= 8) result.push(stack.pop()!)
+        while (stack.length > 0 && (stack[stack.length - 1]?.precedence ?? 0) >= 8)
+          result.push(stack.pop()!)
         stack.push({
           type: 'OPERATOR',
           start: token.start,
@@ -231,7 +232,10 @@ function tokensToPostfix(tokens: Token[]) {
       if (previousTokenType === 'LPAREN')
         result.push({ type: 'OPERAND', start: token.start, end: token.start, value: '' }) // no params
     } else if (token.type === 'OPERATOR') {
-      while (stack.length > 0 && (token.precedence ?? 0) <= (stack.at(-1)?.precedence ?? 0))
+      while (
+        stack.length > 0 &&
+        (token.precedence ?? 0) <= (stack[stack.length - 1]?.precedence ?? 0)
+      )
         result.push(stack.pop()!)
       stack.push(token)
     }
@@ -283,12 +287,13 @@ function calc(operator: string, a: any, b: any) {
 }
 
 function getValueFromContext(context: Record<string, any>, key: string[], namespace?: string) {
-  if (key.length === 1 && Object.hasOwn(functions, key[0])) return (functions as any)[key[0]]
+  if (key.length === 1 && Object.prototype.hasOwnProperty.call(functions, key[0]))
+    return (functions as any)[key[0]]
   let obj: string | number | boolean | Record<string, any> = context
   for (let i = 0; i < key.length; i++) {
     let part = key[i]
     if (i === 0 && part === '' && namespace) part = namespace
-    if (typeof obj === 'object' && Object.hasOwn(obj, part)) obj = obj[part]
+    if (typeof obj === 'object' && Object.prototype.hasOwnProperty.call(obj, part)) obj = obj[part]
     else return
   }
   if (

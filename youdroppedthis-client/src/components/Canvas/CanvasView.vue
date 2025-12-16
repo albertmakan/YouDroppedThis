@@ -317,6 +317,7 @@ async function placeArtwork() {
     toast.warning('Please log in to place artwork')
     return
   }
+  editorStore.isPlacing = true
   mutatePlaceArtwork(
     {
       pixelData: editorStore.getPixelData(),
@@ -326,6 +327,7 @@ async function placeArtwork() {
       onSuccess: (response) => {
         editorStore.isOpen = false
         editorStore.location = null
+        editorStore.isPlacing = false
         editorStore.clearCanvas()
         authStore.setProfileInfo(response.userProfile)
       },
@@ -334,6 +336,7 @@ async function placeArtwork() {
           'Failed to place artwork: ' +
             JSON.stringify((error as AxiosError).response?.data, null, 4),
         )
+        editorStore.isPlacing = false
       },
     },
   )

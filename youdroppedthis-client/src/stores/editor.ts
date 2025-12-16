@@ -7,6 +7,7 @@ const emptyPixel = ''
 export const useEditorStore = defineStore('editor', () => {
   const isOpen = ref(false)
   const location = ref<{ x: number; y: number } | null>(null)
+  const isPlacing = ref(false)
   const selectedColor = ref('#ffffff')
   const pixels = ref(Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => emptyPixel)))
   const offscreenCanvas = new OffscreenCanvas(64, 64)
@@ -142,6 +143,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     isOpen,
     location,
+    isPlacing,
     resolution,
     selectedColor,
     pixels,

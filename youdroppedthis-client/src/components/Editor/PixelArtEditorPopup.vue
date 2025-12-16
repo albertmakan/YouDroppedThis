@@ -155,10 +155,10 @@
         <div class="flex justify-center gap-4">
           <button
             @click="emit('done')"
-            :disabled="editorStore.tool === 'code' || !isFilledEnough"
-            class="border-current border disabled:opacity-50 rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
+            :disabled="editorStore.tool === 'code' || !isFilledEnough || editorStore.isPlacing"
+            class="border-current border disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
           >
-            Drop
+            {{ editorStore.isPlacing ? 'Dropping...' : 'Drop' }}
           </button>
         </div>
       </div>

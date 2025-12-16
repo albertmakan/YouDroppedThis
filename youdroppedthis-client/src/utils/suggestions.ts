@@ -11,7 +11,7 @@ export function getSuggestions(
   for (let i = 0; i < parts.length - 1; i++) {
     let part = parts[i]
     if (i === 0 && part === '' && namespace) part = namespace
-    if (Object.hasOwn(obj, part)) obj = obj[part]
+    if (Object.prototype.hasOwnProperty.call(obj, part)) obj = obj[part]
     else return []
   }
   const lastPart = parts[parts.length - 1]

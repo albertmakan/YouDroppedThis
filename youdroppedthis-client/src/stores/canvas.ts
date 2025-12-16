@@ -40,8 +40,6 @@ export const useCanvasStore = defineStore('canvas', () => {
   const realtimeSubscribeState = ref('')
 
   async function switchCanvas(canvasId: number) {
-    if (currentCanvasId.value === canvasId) return
-
     await unsubscribeFromCanvas()
     chunks.value.clear()
 
