@@ -3,7 +3,7 @@ import type { Profile, Artwork, CanvasInfo, Transaction, PixelData } from '@/sha
 import { supabase } from './supabase'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL + '/api',
   timeout: 10000,
 })
 
