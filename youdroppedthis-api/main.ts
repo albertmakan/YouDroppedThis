@@ -31,9 +31,22 @@ router.use(
 const app = new Application();
 
 // CORS
+const allowedOrigins: (string | RegExp)[] = [
+  /^https?:\/\/([a-z0-9-]+\.)?youdroppedthis\.xyz$/,
+];
+const allowOrigin = Deno.env.get("ALLOW_ORIGIN");
+if (allowOrigin) {
+  allowedOrigins.push(...allowOrigin.split(",").map((o) => o.trim()));
+}
 app.use(
   oakCors({
-    origin: Deno.env.get("ALLOW_ORIGIN"),
+    origin: (requestOrigin) =>
+      allowedOrigins.some((allowed) => {
+        if (typeof allowed === "string") {
+          return requestOrigin === allowed;
+        }
+        return allowed.test(requestOrigin ?? "");
+      }),
     credentials: true,
   })
 );
