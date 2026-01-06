@@ -316,6 +316,9 @@ async function placeArtwork() {
   if (!authStore.user) {
     toast.warning('Please log in to place artwork')
     return
+  } else if (!authStore.user.confirmed_at) {
+    toast.warning('Please confirm your account to place artwork')
+    return
   }
   editorStore.isPlacing = true
   mutatePlaceArtwork(
@@ -348,6 +351,9 @@ async function collectArtwork() {
   }
   if (!authStore.user) {
     toast.warning('Please log in to collect artwork')
+    return
+  } else if (!authStore.user.confirmed_at) {
+    toast.warning('Please confirm your account to collect artwork')
     return
   }
   mutateCollectArtwork(selectedLocation.value.artwork.id, {

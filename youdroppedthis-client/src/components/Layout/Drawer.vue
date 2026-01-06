@@ -3,11 +3,11 @@
     class="fixed left-0 top-0 h-screen w-60 bg-black text-neutral-300 shadow-lg z-40 transform transition-transform duration-300 border-neutral-600 border-r"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full'"
   >
-    <div class="flex gap-2 items-center text-primary p-2 z-10 font-bold">
-      <button @click="isOpen = false" class="size-5 cursor-pointer hover:bg-neutral-800">
-        <MenuIcon />
+    <div class="flex items-center text-primary z-10 font-bold">
+      <button @click="isOpen = false" class="p-2 cursor-pointer hover:bg-neutral-800">
+        <div class="size-5"><MenuIcon /></div>
       </button>
-      YouDroppedThis
+      <span class="px-2">YouDroppedThis</span>
     </div>
     <div class="overflow-y-auto overflow-x-hidden h-[calc(100vh-40px)]">
       <nav class="p-4 pt-0 space-y-2">

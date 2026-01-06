@@ -1,8 +1,8 @@
 <template>
-  <div class="fixed inset-0 flex items-center z-50 bg-black/50" @click="emit('close')">
+  <div class="fixed inset-0 flex items-center z-50 bg-black/50" @mousedown="emit('close')">
     <div
       class="bg-black text-neutral-200 rounded-lg shadow-lg mx-auto my-4 w-fit border border-neutral-600"
-      @click.stop
+      @mousedown.stop
     >
       <div class="flex w-full justify-between items-center gap-4 text-xl p-3">
         <h2>{{ canvas.name }}</h2>

@@ -48,12 +48,10 @@ transactionRouter.post("/daily-bonus", async (ctx) => {
   const userId = ctx.state.user.id;
   try {
     const result = await TransactionService.claimDailyBonus(userId);
+    ctx.response.body = result;
     if (!result.success) {
       ctx.response.status = 400;
-      ctx.response.body = { error: result.message };
-      return;
     }
-    ctx.response.body = result;
   } catch (error) {
     ctx.response.status = 500;
     ctx.response.body = { error, msg: "Failed to claim daily bonus" };

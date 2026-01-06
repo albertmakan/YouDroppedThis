@@ -1,11 +1,11 @@
 <template>
   <div
-    class="fixed flex gap-2 items-center top-0 left-0 rounded-br-md backdrop-blur-xl text-primary bg-black/50 p-2 z-10 font-bold"
+    class="fixed flex items-center top-0 left-0 rounded-br-md backdrop-blur-xl text-primary bg-black/50 z-10 font-bold"
   >
-    <button @click="drawerRef?.openDrawer" class="size-5 cursor-pointer hover:bg-neutral-800">
-      <MenuIcon />
+    <button @click="drawerRef?.openDrawer" class="p-2 cursor-pointer hover:bg-neutral-800">
+      <div class="size-5"><MenuIcon /></div>
     </button>
-    <router-link to="/"> YouDroppedThis </router-link>
+    <router-link to="/" class="px-2"> YouDroppedThis </router-link>
   </div>
   <div class="fixed top-0 right-0 p-2 z-20">
     <ProfileButton />

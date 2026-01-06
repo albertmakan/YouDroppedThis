@@ -48,10 +48,21 @@
             v-model="formData.username"
             type="text"
             required
+            minlength="3"
+            maxlength="20"
+            pattern="^[a-zA-Z0-9_]+$"
             placeholder="Enter username"
             :disabled="authStore.isLoading"
+            autocomplete="username"
             class="w-full p-3 border rounded-lg focus:border-primary outline-0"
           />
+          <span class="text-xs text-neutral-400">{{
+            (formData.username &&
+              ((!/^[a-zA-Z0-9_-]+$/.test(formData.username) && 'Only letters, numbers and _') ||
+                (formData.username.length < 3 && 'At least 3 characters') ||
+                (formData.username.length > 20 && 'Max 20 characters'))) ||
+            ''
+          }}</span>
         </template>
         <!-- Common fields -->
         <label for="email" class="mt-4 mb-1 block text-sm">Email</label>
@@ -62,6 +73,7 @@
           required
           placeholder="your@email.com"
           :disabled="authStore.isLoading"
+          autocomplete="email"
           class="w-full p-3 border rounded-lg focus:border-primary outline-0"
         />
         <label for="password" class="mt-4 mb-1 block text-sm">Password</label>
@@ -70,11 +82,15 @@
           v-model="formData.password"
           type="password"
           required
+          minlength="6"
           :placeholder="mode === 'register' ? 'At least 6 characters' : 'Enter password'"
           :disabled="authStore.isLoading"
+          :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
           class="w-full p-3 border rounded-lg focus:border-primary outline-0"
         />
-
+        <span v-if="mode === 'register'" class="text-xs text-neutral-400">{{
+          (formData.password && formData.password.length < 6 && 'At least 6 characters') || ''
+        }}</span>
         <button
           type="submit"
           class="w-full mt-6 p-3 bg-primary rounded-lg font-semibold cursor-pointer disabled:cursor-not-allowed disabled:bg-neutral-700 inline-flex gap-2 items-center justify-center"

@@ -1,11 +1,11 @@
 <template>
-  <div class="min-h-screen bg-black text-neutral-200">
-    <header class="flex justify-between">
-      <div class="flex gap-2 items-center text-primary p-2 font-bold">
-        <button class="size-5 cursor-pointer hover:bg-neutral-800">
-          <MenuIcon />
+  <div class="min-h-screen bg-black">
+    <header class="flex justify-between items-start sticky top-0 bg-black z-10">
+      <div class="flex items-center text-primary font-bold">
+        <button @click="drawerRef?.openDrawer" class="p-2 cursor-pointer hover:bg-neutral-800">
+          <div class="size-5"><MenuIcon /></div>
         </button>
-        <router-link to="/"> YouDroppedThis </router-link>
+        <router-link to="/" class="px-2"> YouDroppedThis </router-link>
       </div>
       <div class="p-2 pb-0 z-10">
         <ProfileButton />
@@ -19,7 +19,7 @@
 
       <div class="flex flex-col lg:flex-row gap-4">
         <nav
-          class="bg-black rounded-lg border border-neutral-600 lg:w-52 w-full h-fit sticky top-4"
+          class="bg-black rounded-lg border border-neutral-600 lg:w-52 w-full h-fit sticky top-10"
         >
           <div class="">
             <ul class="flex lg:flex-col text-nowrap gap-2 p-2 overflow-x-auto">
@@ -79,15 +79,19 @@
           </div>
         </nav>
 
-        <div class="rounded-lg border border-neutral-600 p-6 flex-1">
+        <div class="rounded-lg border border-neutral-600 p-6 flex-1" v-if="authStore.user">
           <GeneralSettingsView v-if="route.params.tab === 'general'" />
           <AccountSettingsView v-else-if="route.params.tab === 'account'" />
-          <TransactionsTable v-else-if="route.params.tab === 'transactions'" />
+          <TransactionsTable
+            v-else-if="route.params.tab === 'transactions'"
+            :user-id="authStore.user.id"
+          />
           <PurchaseView v-else-if="route.params.tab === 'purchase'" />
         </div>
       </div>
     </div>
   </div>
+  <Drawer ref="drawer" />
 </template>
 
 <script setup lang="ts">
@@ -98,6 +102,11 @@ import TransactionsTable from './TransactionsTable.vue'
 import PurchaseView from './PurchaseView.vue'
 import MenuIcon from '@/assets/icons/menu.svg'
 import ProfileButton from '../ProfileButton.vue'
+import Drawer from '@/components/Layout/Drawer.vue'
+import { useTemplateRef } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
+const drawerRef = useTemplateRef<InstanceType<typeof Drawer>>('drawer')
 const route = useRoute()
+const authStore = useAuthStore()
 </script>

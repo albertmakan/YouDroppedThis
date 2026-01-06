@@ -25,19 +25,12 @@
       @click="selectedPackage = pkg.id"
       tabindex="0"
     >
-      <div v-if="pkg.popular" class="absolute -top-3 left-1/2 -translate-x-1/2">
-        <span class="bg-neutral-200 text-black text-xs font-bold px-3 py-1 rounded-full">
-          POPULAR
-        </span>
-      </div>
-
       <div class="text-center">
         <div class="text-4xl mb-2">{{ pkg.icon }}</div>
         <div class="text-2xl font-bold mb-1">{{ pkg.coins }} coins</div>
-        <div class="text-neutral-400 text-sm mb-4">${{ pkg.price }}</div>
-
-        <div v-if="pkg.bonus" class="text-green-400 text-xs font-medium mb-4">
-          +{{ pkg.bonus }} bonus coins!
+        <div class="text-neutral-400 text-sm mb-4">
+          <span class="line-through decoration-code-warn">${{ pkg.price }}</span>
+          <span class="text-code-warn"> FREE </span>
         </div>
 
         <div class="text-xs text-neutral-500">
@@ -57,8 +50,6 @@
       {{ selectedPackage ? coinPackages.find((p) => p.id === selectedPackage)?.coins : 0 }}
       Coins
     </button>
-
-    <p class="text-center text-xs text-neutral-500 mt-4">Secure payment processed by Stripe</p>
   </div>
 </template>
 
@@ -72,21 +63,13 @@ const toast = useToast()
 
 const authStore = useAuthStore()
 
-interface CoinPackage {
-  id: number
-  coins: number
-  price: number
-  bonus?: number
-  icon: string
-  popular?: boolean
-}
 const selectedPackage = ref<number | null>(null)
 const purchaseLoading = ref(false)
 
-const coinPackages: CoinPackage[] = [
-  { id: 1, coins: 100, price: 0.99, icon: '🪙' },
-  { id: 2, coins: 500, price: 4.49, bonus: 50, icon: '💎', popular: true },
-  { id: 3, coins: 1000, price: 7.99, bonus: 200, icon: '👑' },
+const coinPackages = [
+  { id: 1, coins: 100, price: 0.99, icon: '💯' },
+  { id: 2, coins: 500, price: 4.49, icon: '💎' },
+  { id: 3, coins: 1000, price: 7.99, icon: '👑' },
 ]
 
 async function purchaseCoins() {

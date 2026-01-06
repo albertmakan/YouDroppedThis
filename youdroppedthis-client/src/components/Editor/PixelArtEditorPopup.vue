@@ -82,36 +82,61 @@
         </div>
       </div>
     </div>
-    <div v-if="editorStore.tool === 'code'" class="relative w-full">
-      <div class="absolute inset-0 backdrop-blur-xl" :style="{ height: `${size}px` }" />
+    <div v-if="isCode" class="relative w-full">
+      <div class="absolute inset-0 backdrop-blur-xl bg-black/30" :style="{ height: `${size}px` }" />
       <div
         class="absolute p-4 inset-0 w-full overflow-y-auto overflow-x-hidden pointer-events-auto"
         :style="{ height: `${size}px` }"
       >
-        <ExpressionEditor
-          id="expression-field"
-          :text="editorStore.expression"
-          @change="(newExpr) => (editorStore.expression = newExpr)"
-          :context="editorStore.context"
-          placeholder="pixel(x,y) :="
-        />
-        <div class="flex justify-center gap-4 mt-2">
+        <div class="flex px-1 items-center mb-1 gap-2 text-xs">
+          <label for="expression-field">pixel(x,y) :=</label>
           <button
-            @click="editorStore.tool = 'pen'"
-            class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            @click="isExpressionHelpOpen = !isExpressionHelpOpen"
+            class="ml-auto border px-1 rounded-full cursor-pointer bg-neutral-900 hover:bg-neutral-800"
           >
-            <span class="size-4"><XMarkIcon /></span>
-            Cancel
-          </button>
-
-          <button
-            @click="applyExpression"
-            class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
-          >
-            <span class="size-4"><CheckmarkIcon /></span>
-            Apply
+            {{ isExpressionHelpOpen ? '×' : '?' }}
           </button>
         </div>
+        <template v-if="isExpressionHelpOpen">
+          <div
+            class="bg-neutral-900 border border-neutral-600 rounded-md rounded-tr-none w-full p-2"
+          >
+            <ExpressionHelp />
+          </div>
+          <div class="flex justify-center gap-x-4 gap-y-2 mt-2 flex-wrap">
+            <button
+              @click="isExpressionHelpOpen = false"
+              class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            >
+              <span class="size-4"><XMarkIcon /></span>
+              Close
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <ExpressionEditor
+            id="expression-field"
+            :text="editorStore.expression"
+            @change="(newExpr) => (editorStore.expression = newExpr)"
+            :context="editorStore.context"
+          />
+          <div class="flex justify-center gap-x-4 gap-y-2 mt-2 flex-wrap">
+            <button
+              @click="editorStore.tool = 'pen'"
+              class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            >
+              <span class="size-4"><XMarkIcon /></span>
+              Cancel
+            </button>
+            <button
+              @click="applyExpression"
+              class="cursor-pointer bg-neutral-900 hover:bg-neutral-800 py-1 px-2 text-xs rounded-md inline-flex gap-1"
+            >
+              <span class="size-4"><CheckmarkIcon /></span>
+              Apply
+            </button>
+          </div>
+        </template>
       </div>
     </div>
     <canvas
@@ -142,7 +167,7 @@
         <div class="flex gap-2 flex-wrap min-w-64 m-auto mb-4 *:pointer-events-auto">
           <div class="h-6 w-14" :style="{ background: editorStore.selectedColor }"></div>
           <button
-            v-for="color in palette"
+            v-for="(color, i) in palette"
             :key="color"
             :class="[
               'w-6 h-6 rounded-md cursor-pointer',
@@ -150,12 +175,14 @@
             ]"
             :style="{ backgroundColor: color }"
             @click="editorStore.selectedColor = color"
-          ></button>
+          >
+            <div v-if="isCode" class="text-xs text-white">{{ i }}</div>
+          </button>
         </div>
         <div class="flex justify-center gap-4">
           <button
             @click="emit('done')"
-            :disabled="editorStore.tool === 'code' || !isFilledEnough || editorStore.isPlacing"
+            :disabled="isCode || !isFilledEnough || editorStore.isPlacing"
             class="border-current border disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
           >
             {{ editorStore.isPlacing ? 'Dropping...' : 'Drop' }}
@@ -181,6 +208,7 @@ import SparkleIcon from '@/assets/icons/sparkle.svg'
 import CheckmarkIcon from '@/assets/icons/checkmark.svg'
 import ExpressionEditor from '@/components/Editor/ExpressionEditor.vue'
 import { renderArtwork } from '@/components/Artwork/renderArtwork'
+import ExpressionHelp from './ExpressionHelp.vue'
 
 const pixelCanvas = useTemplateRef<HTMLCanvasElement>('pixel-canvas')
 
@@ -206,8 +234,10 @@ const emit = defineEmits<{
 }>()
 
 const editorLayout = ref<'h' | 'v'>('v')
+const isExpressionHelpOpen = ref(false)
 const showGrid = ref(true)
 const isDrawing = ref(false)
+const isCode = computed(() => editorStore.tool === 'code')
 const pixelSize = computed(() => size / editorStore.resolution)
 
 const coloredPixelCount = ref(0)
@@ -281,9 +311,11 @@ function clearCanvas() {
 }
 
 function applyExpression() {
-  editorStore.applyFunction()
-  editorStore.saveState()
-  editorStore.tool = 'pen'
+  const applied = editorStore.applyFunction()
+  if (applied) {
+    editorStore.saveState()
+    editorStore.tool = 'pen'
+  }
 }
 
 onMounted(drawCanvas)

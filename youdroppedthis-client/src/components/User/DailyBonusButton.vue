@@ -16,21 +16,20 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { useClaimDailyBonus } from '@/composables/useUserTransactions'
 import GiftIcon from '@/assets/icons/gift.svg'
+import type { TransactionResult } from '@/services/api'
+
+const lastBonusTimeKey = (userId?: string) => 'last_bonus_claim_' + userId
 
 const { mutate: mutateClaimDailyBonus, isPending: bonusLoading } = useClaimDailyBonus()
 
 const toast = useToast()
 
 const authStore = useAuthStore()
-const lastBonusTime = ref<string | null>(localStorage.getItem('last_bonus_claim'))
+const lastBonusTime = ref<string | null>(localStorage.getItem(lastBonusTimeKey(authStore.user?.id)))
 
 const canClaimBonus = computed(() => {
   if (!lastBonusTime.value) return true
-
-  const lastClaim = new Date(lastBonusTime.value)
-  const now = new Date()
-  const daysPassed = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60 * 24)
-
+  const daysPassed = (Date.now() - new Date(lastBonusTime.value).getTime()) / (1000 * 60 * 60 * 24)
   return daysPassed >= 1
 })
 
@@ -39,15 +38,18 @@ async function handleClaimBonus() {
     onSuccess: (result) => {
       if (result.success && result.newBalance) {
         authStore.setProfileInfo({ balance: result.newBalance })
-        lastBonusTime.value = new Date().toISOString()
-        localStorage.setItem('last_bonus_claim', lastBonusTime.value)
         toast.success(`🎁 ${result.message}`)
       } else {
         toast.warning(result.message)
       }
+      lastBonusTime.value = result.claimedAt
+      localStorage.setItem(lastBonusTimeKey(result.userId), lastBonusTime.value)
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to claim bonus')
+      const result = (error.response?.data ?? {}) as TransactionResult
+      toast.warning(result.message || 'Failed to claim bonus')
+      lastBonusTime.value = result.claimedAt
+      localStorage.setItem(lastBonusTimeKey(result.userId), lastBonusTime.value)
     },
   })
 }

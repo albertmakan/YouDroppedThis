@@ -6,11 +6,12 @@ type HighlighedExpressionProps = {
   tokens: Token[]
   variables?: Record<string, any>
   namespace?: string
+  noTooltip?: boolean
 }
 type Tooltip = { error?: string; warning?: string; info?: string }
 
 export default defineComponent({
-  props: ['expr', 'tokens', 'variables', 'namespace'],
+  props: ['expr', 'tokens', 'variables', 'namespace', 'noTooltip'],
   emits: ['token-click'],
   setup(props: HighlighedExpressionProps, { emit }) {
     function setTooltipPosition(x: number, y: number, c?: string) {
@@ -113,10 +114,12 @@ export default defineComponent({
       return (
         <span class="relative">
           {elements}
-          <div
-            class="fixed z-20 rounded-sm bg-neutral-700 px-1 text-xs font-normal text-neutral-200 border"
-            id="token-tooltip"
-          />
+          {!props.noTooltip && (
+            <div
+              class="fixed z-20 rounded-sm bg-neutral-800 px-1 text-xs font-normal text-neutral-200"
+              id="token-tooltip"
+            />
+          )}
         </span>
       )
     }

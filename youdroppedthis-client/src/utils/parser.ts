@@ -37,10 +37,9 @@ function tokenize(expr: string) {
 
   const tokens: Token[] = []
 
-  const addOperandToken = (dataType?: 'b' | 'n' | 's') => {
+  const addOperandToken = (dataType?: 'n' | 's') => {
     let value
-    if (dataType === 'b') value = expr[start] === 'T'
-    else if (dataType === 'n') value = +expr.substring(start, pos)
+    if (dataType === 'n') value = +expr.substring(start, pos)
     else if (dataType === 's') value = currentString.join('')
     else value = expr.substring(start, pos).split('.')
     tokens.push({ type: 'OPERAND', value, start, end: pos })
@@ -91,10 +90,6 @@ function tokenize(expr: string) {
         state = 'string'
       } else if (isDigit(peek)) {
         state = 'number'
-      } else if (peek === 'T' || peek === 'F') {
-        const next = expr[pos]
-        if (next && (isDigit(next) || isLetter(next) || next === '.')) state = 'ident'
-        else addOperandToken('b')
       } else if (isLetter(peek)) {
         state = 'ident'
       } else if (peek === '.') {

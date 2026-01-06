@@ -266,6 +266,12 @@ CREATE TABLE IF NOT EXISTS "app"."profiles" (
 );
 
 
+ALTER TABLE "app"."profiles" 
+ADD CONSTRAINT username_format CHECK (
+  username ~ '^[a-zA-Z0-9_]{3,20}$'
+);
+
+
 ALTER TABLE "app"."profiles" OWNER TO "postgres";
 
 

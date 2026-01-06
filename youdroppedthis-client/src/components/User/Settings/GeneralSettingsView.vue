@@ -6,16 +6,25 @@
 
   <form v-if="authStore.user" class="space-y-4" @submit.prevent="saveGeneral">
     <div>
-      <label for="avatar" class="text-sm font-medium mb-2">
+      <button
+        class="text-sm font-medium mb-2"
+        type="button"
+        @click="colorPickerOpen = !colorPickerOpen"
+      >
         Avatar
         <div
-          class="inline-block rounded-full size-[1.4em] aspect-square text-white text-center text-2xl"
+          class="inline-block rounded-full size-[1.4em] aspect-square text-white text-center text-2xl cursor-pointer"
           :style="{ background: profile.avatarColor }"
         >
           {{ authStore.user.username.charAt(0) }}
         </div>
-      </label>
-      <input type="color" id="avatar" v-model="profile.avatarColor" class="size-0" />
+      </button>
+      <div v-if="colorPickerOpen" class="text-xs text-white w-80 max-w-full">
+        <ColorPicker
+          :value="profile.avatarColor ?? ''"
+          @update="(value) => (profile.avatarColor = value)"
+        />
+      </div>
     </div>
     <div>
       <label for="bio" class="text-sm font-medium mb-2">Bio</label>
@@ -48,12 +57,15 @@ import { computed, ref, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { useUpdateProfile } from '@/composables/useProfiles'
 import type { AxiosError } from 'axios'
+import ColorPicker from '@/components/Editor/ColorPicker.vue'
 
 const { mutate: mutateUpdateProfile } = useUpdateProfile()
 
 const toast = useToast()
 
 const authStore = useAuthStore()
+
+const colorPickerOpen = ref(false)
 
 const profile = ref({
   bio: authStore.user?.bio,
@@ -70,7 +82,7 @@ const changed = computed(() => {
 async function saveGeneral() {
   mutateUpdateProfile(
     {
-      bio: profile.value.bio,
+      bio: profile.value.bio ?? undefined,
       profilePicture: profile.value.avatarColor
         ? { palette: [profile.value.avatarColor], mat: [[]] }
         : undefined,

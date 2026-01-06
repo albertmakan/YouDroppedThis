@@ -112,6 +112,7 @@ export interface TransactionResult {
   success: boolean
   message: string
   newBalance?: number
+  claimedAt: string
   userId: string
 }
 

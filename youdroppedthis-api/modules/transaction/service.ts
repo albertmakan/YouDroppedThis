@@ -42,6 +42,7 @@ export class TransactionService {
     return {
       success: true,
       message: `Amount of ${amount} coins claimed!`,
+      claimedAt: new Date().toISOString(),
       newBalance: balanceResult.rows[0].balance,
       userId,
     };
@@ -62,6 +63,7 @@ export class TransactionService {
       return {
         success: false,
         message: "Daily bonus already claimed today",
+        claimedAt: lastBonusResult.rows[0].created_at,
         userId,
       };
     }

@@ -66,7 +66,7 @@
   </div>
 
   <div
-    v-if="!isFetchingNextPage && !data?.pages[0].transactions.length"
+    v-if="!isFetching && !data?.pages[0].transactions.length"
     class="text-center py-12 text-neutral-400"
   >
     No transactions yet
@@ -75,8 +75,13 @@
 
 <script setup lang="ts">
 import { useUserTransactions } from '@/composables/useUserTransactions'
+import { toRef } from 'vue'
 
-const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserTransactions()
+const props = defineProps<{ userId: string }>()
+
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } = useUserTransactions(
+  toRef(props, 'userId'),
+)
 
 function formatDate(dateString: string) {
   const date = new Date(dateString)
@@ -85,6 +90,7 @@ function formatDate(dateString: string) {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   }).format(date)
 }
 </script>

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import { solvePostfix, tokenize, tokensToPostfix } from '@/utils/parser'
+import f from '@/utils/builtInFunctions'
 
 const emptyPixel = ''
 
@@ -11,6 +12,7 @@ export const useEditorStore = defineStore('editor', () => {
   const selectedColor = ref('#ffffff')
   const pixels = ref(Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => emptyPixel)))
   const offscreenCanvas = new OffscreenCanvas(64, 64)
+  const palette = ref(['#ffffff'])
   const tool = ref<'pen' | 'eraser' | 'fill' | 'code' | null>('pen')
   const expression = ref('')
 
@@ -23,7 +25,7 @@ export const useEditorStore = defineStore('editor', () => {
     x: 0,
     y: 0,
     pixel: (x: number, y: number) => pixels.value[y]?.[x] ?? emptyPixel,
-    palette: ['#ffffff'],
+    palette: (i: number) => palette.value[f.mod(Math.round(i), palette.value.length)],
   })
 
   const resolution = computed({
@@ -97,8 +99,9 @@ export const useEditorStore = defineStore('editor', () => {
     return true
   }
 
-  function setPalette(palette: string[]) {
-    context.value.palette = palette
+  function setPalette(newPalette: string[]) {
+    palette.value = newPalette
+    if (!newPalette.includes(selectedColor.value)) selectedColor.value = newPalette[0] || emptyPixel
   }
 
   function clearCanvas() {
@@ -109,7 +112,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   function applyFunction() {
     const { tokens, errorFound } = tokenize(expression.value)
-    if (errorFound) return
+    if (errorFound) return false
     const postfix = tokensToPostfix(tokens)
     const variables = { ...context.value }
     const newPixels = pixels.value.map((r) => [...r])
@@ -123,6 +126,7 @@ export const useEditorStore = defineStore('editor', () => {
       }
     }
     pixels.value = newPixels
+    return true
   }
 
   function getPixelData() {

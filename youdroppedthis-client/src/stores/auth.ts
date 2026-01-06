@@ -5,8 +5,10 @@ import { authApi, userApi } from '@/services/api'
 import type { AuthResponse } from '@supabase/auth-js'
 import { supabase } from '@/services/supabase'
 
+type UserInfo = Profile & { confirmed_at?: string }
+
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<Profile | null>(null)
+  const user = ref<UserInfo | null>(null)
 
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -36,7 +38,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data, error: authError } = await authApi.signUp(username, email, password)
       if (authError) {
-        error.value = authError.message
+        if (authError.message === 'Database error saving new user') {
+          error.value = 'This username already exists'
+        } else {
+          error.value = authError.message
+        }
       } else {
         setAuth(data.user)
       }
@@ -54,6 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
       email: authUserData.email || '',
       username: authUserData.user_metadata.username ?? '',
       created_at: authUserData.created_at,
+      confirmed_at: authUserData.confirmed_at,
       balance: 0,
     }
     loadProfile()

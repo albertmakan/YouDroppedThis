@@ -35,7 +35,16 @@
 - improve rate limiter
 - landing page
 - icons
+- email confirm banner
+- back button from settings
+- expression info, functions info
+- last bonus claim by user
+- invalidate query data on logout
+- validate username
+- custom color picker
+
+- private canvases (canvas-user db table,...)
 
 - deploy on cloud
-
+- email server setup
 - buying coins ~ // payment processor
