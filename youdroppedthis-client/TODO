@@ -33,7 +33,6 @@
 - @tanstack/vue-query (for profiles, collections and transactions), invalidate on placement, profile mutations
 - test multi canvas
 - improve rate limiter
-- landing page
 - icons
 - email confirm banner
 - back button from settings
@@ -42,9 +41,20 @@
 - invalidate query data on logout
 - validate username
 - custom color picker
-
-- private canvases (canvas-user db table,...)
-
 - deploy on cloud
 - email server setup
-- buying coins ~ // payment processor
+- canvas creation form
+- landing page (refactor)
+- calc grid color
+- save draft by canvas
+- optimize chunk offset(
+  - start 0: 4, 4, 16
+  - start 8: 1, 9, 9
+  - dynamic: 1, 4, 9)
+- migrate db changes
+
+- now active page (query)
+- collection and host (claim on open?) rewards, transaction realtime?
+- moment rate limit
+- email template
+- improve UI copy, logo

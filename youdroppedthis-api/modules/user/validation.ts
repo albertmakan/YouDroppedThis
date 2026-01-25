@@ -1,15 +1,11 @@
 import { z } from "../../deps.ts";
+import { colorSchema } from "../artwork/validation.ts";
 
 export const profileUpdateSchema = z.object({
-  bio: z.string().max(2000).optional(),
+  bio: z.string().max(500).optional(),
   profilePicture: z
     .object({
-      palette: z
-        .string()
-        .regex(
-          /^(#[0-9A-Fa-f]{6}|)$/,
-          "Colors must be in hex format (#RRGGBB) or empty string for transparent"
-        ) // Allow empty string
+      palette: colorSchema
         .array()
         .min(1, "Palette must have at least one color")
         .max(2, "Palette cannot exceed 2 colors"),

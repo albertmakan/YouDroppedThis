@@ -3,9 +3,12 @@
     <div class="p-[1em]">
       <input
         type="text"
-        :value="props.value"
+        :style="{
+          color: `hsl(${hue}, ${saturation}%, ${lightness + (lightness > 50 ? -50 : 50)}%)`,
+        }"
+        :value="props.value + ` hsl(${hue}, ${saturation}%, ${lightness}%)`"
         disabled
-        class="bg-black/50 w-[8em] max-w-full p-[0.25em]"
+        class="w-[30em] max-w-full p-[0.25em] font-semibold"
       />
     </div>
     <div class="p-[1.5em] flex flex-col gap-[1em] bg-black/80">
@@ -71,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { hslToRGB, rgbToHSL } from '@/utils/color'
+import { colorToRGBA, hslToRGB, rgbToHSL } from '@/utils/color'
 import { ref, watch } from 'vue'
 
 const props = defineProps<{ value: string }>()
@@ -80,16 +83,6 @@ const emit = defineEmits<{ update: [value: string] }>()
 const hue = ref(0)
 const saturation = ref(0)
 const lightness = ref(0)
-
-const tempCanvasCTX = new OffscreenCanvas(1, 1).getContext('2d', { willReadFrequently: true })!
-
-function colorToRGBA(color: string) {
-  tempCanvasCTX.clearRect(0, 0, 1, 1)
-  tempCanvasCTX.fillStyle = color
-  tempCanvasCTX.fillRect(0, 0, 1, 1)
-  const rgba = Array.from(tempCanvasCTX.getImageData(0, 0, 1, 1).data)
-  return rgba
-}
 
 watch([hue, saturation, lightness], () => {
   const [r, g, b] = hslToRGB(hue.value, saturation.value, lightness.value)

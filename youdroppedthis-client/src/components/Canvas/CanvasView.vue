@@ -18,9 +18,8 @@
           <button @click="resetZoom" class="cursor-pointer hover:underline">Reset</button>
         </div>
         <div>🎨 Visible artworks: {{ visibleArtworks }}</div>
-        <div>🧩 Chunks: {{ (chunks.cx2 - chunks.cx1 + 1) * (chunks.cy2 - chunks.cy1 + 1) }}</div>
         <div>⚡ Performance: {{ Math.floor(fps) }}fps</div>
-        <div>🔌 Realtime: {{ canvasStore.realtimeSubscribeState }}</div>
+        <div>🔌 Realtime: {{ realtimeSubscribeState }}</div>
       </div>
       <button
         @click="showInfo = !showInfo"
@@ -74,12 +73,13 @@
     />
     <div
       v-if="locationPreview && !selectedLocation?.artwork"
-      class="fixed pointer-events-none border-2 border-current border-dashed text-neutral-400 mix-blend-difference"
+      class="fixed pointer-events-none border-2 border-current border-dashed"
       :style="{
         left: `${locationPreview.x}px`,
         top: `${locationPreview.y}px`,
         width: `${zoomedArtSize}px`,
         height: `${zoomedArtSize}px`,
+        color: gridColor,
       }"
     >
       <div class="relative">
@@ -89,13 +89,13 @@
       </div>
       <button
         @click="openEditorAtNewLocation"
-        class="pointer-events-auto cursor-pointer size-1/2 hover:text-neutral-200"
+        class="pointer-events-auto cursor-pointer size-1/2 hover:scale-105"
       >
         <DrawIcon />
       </button>
       <button
         @click="selectedLocation = null"
-        class="pointer-events-auto cursor-pointer size-1/2 hover:text-neutral-200"
+        class="pointer-events-auto cursor-pointer size-1/2 hover:scale-105"
       >
         <XMarkIcon />
       </button>
@@ -109,13 +109,14 @@
       :size="zoomedArtSize"
     />
     <PixelArtEditorPopup
-      v-if="editorStore.isOpen && editorRelativeLocation && !editorLocationTaken"
+      v-if="canvasInfo && editorStore.isOpen && editorRelativeLocation && !editorLocationTaken"
       @close="editorStore.isOpen = false"
       @done="placeArtwork"
       :top="editorRelativeLocation.y"
       :left="editorRelativeLocation.x"
       :size="zoomedArtSize"
-      :palette="canvasInfo?.palette ?? DEFAULT_PALETTE"
+      :canvasInfo
+      :gridColor
       @wheel="handleWheel"
     />
   </div>
@@ -125,15 +126,6 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, toRef } from 'vue'
 import { useRouter } from 'vue-router'
 import type { AxiosError } from 'axios'
-import {
-  CANVAS_BACKGROUND,
-  CHUNK_SIZE,
-  DEFAULT_PALETTE,
-  GRID_COLOR,
-  MAX_ZOOM,
-  MIN_ZOOM,
-  useCanvasStore,
-} from '@/stores/canvas'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import type { Artwork } from '@/shared/types'
@@ -148,6 +140,15 @@ import DrawIcon from '@/assets/icons/draw.svg'
 import XMarkIcon from '@/assets/icons/xmark.svg'
 import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
 import f from '@/utils/builtInFunctions'
+import { colorToRGBA, rgbToHSL } from '@/utils/color'
+import { canvasApi } from '@/services/api'
+import { supabase } from '@/services/supabase'
+import type { RealtimeChannel } from '@supabase/realtime-js'
+
+const CHUNK_SIZE = 16
+const MIN_ZOOM = 0.25
+const MAX_ZOOM = 5
+const DEFAULT_BACKGROUND = '#18181b'
 
 const props = defineProps<{
   canvasId: number
@@ -164,7 +165,6 @@ const { mutate: mutateCollectArtwork } = useCollectArtwork(canvasId)
 
 const toast = useToast()
 
-const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
 const editorStore = useEditorStore()
 const router = useRouter()
@@ -180,7 +180,7 @@ const viewportWidth = ref(window.innerWidth)
 const viewportHeight = ref(window.innerHeight)
 const zoom = ref(1)
 const lastZoom = ref(1)
-const zoomedArtSize = computed(() => 64 * zoom.value)
+const zoomedArtSize = computed(() => 128 * zoom.value)
 const zoomedChunkSize = computed(() => zoomedArtSize.value * CHUNK_SIZE)
 const isDragging = ref(false)
 const dragStart = ref({ x: 0, y: 0 })
@@ -196,14 +196,69 @@ const viewBounds = computed(() => ({
 }))
 
 const canvasBounds = computed(() => {
-  const {
-    min_x = -Infinity,
-    max_x = Infinity,
-    min_y = -Infinity,
-    max_y = Infinity,
-  } = canvasInfo.value ?? {}
+  const { min_x = -8, max_x = 7, min_y = -8, max_y = 7 } = canvasInfo.value ?? {}
   return { min_x, max_x, min_y, max_y }
 })
+
+const chunks = new Map<string, { artworks?: Artwork[]; isLoading: boolean }>()
+const subscription = ref<RealtimeChannel | null>(null)
+const realtimeSubscribeState = ref('')
+
+function subscribeToCanvas(canvasId: number) {
+  const channel = supabase.channel(`canvas:${canvasId}`, { config: { private: true } })
+  channel
+    .on('broadcast', { event: '*' }, ({ payload, event }) => handleRealtimeEvent(event, payload))
+    .subscribe((state) => (realtimeSubscribeState.value = state))
+  subscription.value = channel
+}
+
+async function unsubscribeFromCanvas() {
+  if (subscription.value) {
+    await subscription.value.unsubscribe()
+    subscription.value = null
+  }
+}
+
+function handleRealtimeEvent(event: string, payload: any) {
+  if (event === 'placed') {
+    const artwork = payload as Artwork
+    getChunkByCoords(artwork.x, artwork.y)?.artworks?.push(artwork)
+    if (editorStore.location?.x === artwork.x && editorStore.location.y === artwork.y) {
+      editorLocationTaken.value = true
+    }
+  } else if (event === 'collected') {
+    const { x, y, id, collected_at, collected_by } = payload as Artwork
+    const collected = getChunkByCoords(x, y)?.artworks?.find((a) => a.id === id)
+    if (collected) {
+      collected.collected_by = collected_by
+      collected.collected_at = collected_at
+      collected.collectionEffect = { progress: 0 }
+    }
+  }
+}
+
+function getChunkKey(cx: number, cy: number) {
+  return `${cx},${cy}`
+}
+
+function getChunk(cx: number, cy: number) {
+  return chunks.get(getChunkKey(cx, cy))
+}
+
+function getChunkByCoords(x: number, y: number) {
+  const { min_x, min_y } = canvasBounds.value
+  const cx = Math.floor((x - min_x) / CHUNK_SIZE)
+  const cy = Math.floor((y - min_y) / CHUNK_SIZE)
+  return getChunk(cx, cy)
+}
+
+function getArtworkAt(x: number, y: number) {
+  const artworksInChunk = getChunkByCoords(x, y)?.artworks
+  if (!artworksInChunk) return
+  return (
+    artworksInChunk.find((a) => x === a.x && y === a.y && !a.is_expired && !a.collected_by) || null
+  )
+}
 
 // Selection state
 const selectedLocation = ref<{ x: number; y: number; artwork: Artwork | null } | null>(null)
@@ -218,43 +273,49 @@ const editorRelativeLocation = computed(
       : getArtworkRelativeCoordinates(editorStore.location)),
 )
 
-watch(
-  () => props,
-  ({ canvasId, x, y, z, selected }) => {
-    if (canvasId !== canvasStore.currentCanvasId) {
-      canvasStore.switchCanvas(canvasId)
-      selectedLocation.value = null
-      editorStore.isOpen = false
-      editorStore.location = null
-      editorLocationTaken.value = false
-    }
-    setLocation(x, y, z)
-    if (selected) setSelectedLocation({ x, y })
-  },
-  { deep: true, immediate: true },
-)
-
-const chunks = computed(() => {
+const chunksRange = computed(() => {
   const { min_x, max_x, min_y, max_y } = canvasBounds.value
-  const cx1 = Math.floor(Math.max(viewX.value / zoomedChunkSize.value, min_x / CHUNK_SIZE))
+  const cx1 = Math.floor(Math.max(viewX.value / zoomedArtSize.value - min_x, 0) / CHUNK_SIZE)
   const cx2 = Math.floor(
-    Math.min((viewX.value + viewportWidth.value) / zoomedChunkSize.value, max_x / CHUNK_SIZE),
+    Math.min((viewX.value + viewportWidth.value) / zoomedArtSize.value - min_x, max_x - min_x) /
+      CHUNK_SIZE,
   )
-  const cy1 = Math.floor(Math.max(viewY.value / zoomedChunkSize.value, min_y / CHUNK_SIZE))
+  const cy1 = Math.floor(Math.max(viewY.value / zoomedArtSize.value - min_y, 0) / CHUNK_SIZE)
   const cy2 = Math.floor(
-    Math.min((viewY.value + viewportHeight.value) / zoomedChunkSize.value, max_y / CHUNK_SIZE),
+    Math.min((viewY.value + viewportHeight.value) / zoomedArtSize.value - min_y, max_y - min_y) /
+      CHUNK_SIZE,
   )
   if (canvasInfo.value) {
     for (let cx = cx1; cx <= cx2; cx++) {
       for (let cy = cy1; cy <= cy2; cy++) {
-        const chunk = canvasStore.getChunk(cx, cy)
-        if (!chunk?.arts && !chunk?.isLoading) {
-          canvasStore.loadChunk(cx, cy, zoom.value)
+        const chunk = getChunk(cx, cy)
+        if (!chunk?.artworks && !chunk?.isLoading) {
+          const key = getChunkKey(cx, cy)
+          chunks.set(key, { isLoading: true })
+          canvasApi
+            .getArtworksInArea(canvasId.value, {
+              minX: cx * CHUNK_SIZE + min_x,
+              maxX: (cx + 1) * CHUNK_SIZE + min_x,
+              minY: cy * CHUNK_SIZE + min_y,
+              maxY: (cy + 1) * CHUNK_SIZE + min_y,
+            })
+            .then(({ artworks }) => {
+              chunks.set(key, { artworks, isLoading: false })
+            })
+            .catch((error) => {
+              console.error('Failed to load chunk:', error)
+            })
         }
       }
     }
   }
   return { cx1, cx2, cy1, cy2 }
+})
+
+const gridColor = computed(() => {
+  const [r, g, b] = colorToRGBA(canvasInfo.value?.background_color || DEFAULT_BACKGROUND)
+  const [h, s, l] = rgbToHSL(r, g, b)
+  return `hsl(${h}, ${s}%, ${l + (l > 50 ? -50 : 50)}%)`
 })
 
 // Canvas utilities
@@ -372,14 +433,17 @@ async function collectArtwork() {
 // Canvas rendering
 
 const checkeredRes = 4
-const oobPatternCanvas = new OffscreenCanvas(checkeredRes, checkeredRes)
-const oobPatternCtx = oobPatternCanvas.getContext('2d')
-oobPatternCtx!.fillStyle = GRID_COLOR
-for (let si = 0; si < checkeredRes; si++) {
-  for (let sj = 0; sj < checkeredRes; sj++) {
-    if ((si + sj) % 2 === 0) oobPatternCtx!.fillRect(si, sj, 1, 1)
+const oobPattern = computed(() => {
+  const oobPatternCanvas = new OffscreenCanvas(checkeredRes, checkeredRes)
+  const oobPatternCtx = oobPatternCanvas.getContext('2d')
+  oobPatternCtx!.fillStyle = gridColor.value
+  for (let si = 0; si < checkeredRes; si++) {
+    for (let sj = 0; sj < checkeredRes; sj++) {
+      if ((si + sj) % 2 === 0) oobPatternCtx!.fillRect(si, sj, 1, 1)
+    }
   }
-}
+  return oobPatternCanvas
+})
 
 let visibleArtworks = 0,
   renderCount = 0
@@ -390,36 +454,35 @@ function renderCanvas() {
   const context = ctx.value
 
   // Clear canvas
-  context.fillStyle = canvasInfo.value?.background_color || CANVAS_BACKGROUND
+  context.fillStyle = canvasInfo.value?.background_color || DEFAULT_BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   // Draw grid
   const gridSize = zoomedArtSize.value
   const { min_x, max_x, min_y, max_y } = canvasBounds.value
   const { x1, y1 } = viewBounds.value
-  context.globalCompositeOperation = 'exclusion'
-  context.strokeStyle = GRID_COLOR
-  context.fillStyle = GRID_COLOR
+  context.strokeStyle = gridColor.value
   context.lineWidth = 2
   const offsetX = -f.mod(viewX.value, gridSize)
   const offsetY = -f.mod(viewY.value, gridSize)
+  const oobRes = zoom.value > 1 ? checkeredRes : checkeredRes / 2
+  const oobPatternCanvas = oobPattern.value
   let yi = y1
   for (let y = offsetY; y < canvas.height + gridSize; y += gridSize) {
     let xi = x1
     for (let x = offsetX; x < canvas.width + gridSize; x += gridSize) {
       if (xi < min_x || xi > max_x || yi < min_y || yi > max_y) {
-        context.drawImage(oobPatternCanvas, x, y, gridSize, gridSize)
+        context.drawImage(oobPatternCanvas, 0, 0, oobRes, oobRes, x, y, gridSize, gridSize)
       } else {
         context.beginPath()
-        context.moveTo(x - 1, y)
-        context.lineTo(x + 1, y)
+        context.moveTo(x - 0.5, y)
+        context.lineTo(x + 0.5, y)
         context.stroke()
       }
       xi += 1
     }
     yi += 1
   }
-  context.globalCompositeOperation = 'source-over'
 
   let now = ''
   if (renderCount % 100 === 0) {
@@ -427,10 +490,10 @@ function renderCanvas() {
   }
   // Draw artworks
   visibleArtworks = 0
-  const { cx1, cx2, cy1, cy2 } = chunks.value
+  const { cx1, cx2, cy1, cy2 } = chunksRange.value
   for (let cx = cx1; cx <= cx2; cx++) {
     for (let cy = cy1; cy <= cy2; cy++) {
-      const chunk = canvasStore.getChunk(cx, cy)
+      const chunk = getChunk(cx, cy)
       if (chunk?.isLoading) {
         const pulse = 0.3 + Math.sin(renderCount * 0.04) * 0.1
         context.fillStyle = `rgba(255, 255, 255, ${pulse})`
@@ -438,7 +501,7 @@ function renderCanvas() {
         const y = cy * zoomedChunkSize.value - viewY.value
         context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
       } else {
-        chunk?.arts?.forEach((artwork) => {
+        chunk?.artworks?.forEach((artwork) => {
           visibleArtworks += drawArtwork(artwork, context, now)
         })
       }
@@ -486,7 +549,6 @@ function drawArtwork(artwork: Artwork, context: CanvasRenderingContext2D, now: s
       zoomedArtSize.value,
       remaining * zoomedArtSize.value,
     )
-
     return 1
   }
   if (artwork.expires_at < now) {
@@ -513,7 +575,7 @@ function setSelectedLocation(coords: { x: number; y: number }) {
   if (coords.x < min_x || coords.x > max_x || coords.y < min_y || coords.y > max_y) {
     return
   }
-  const clickedArtwork = canvasStore.getArtworkAt(coords.x, coords.y)
+  const clickedArtwork = getArtworkAt(coords.x, coords.y)
   if (clickedArtwork === undefined) {
     return
   }
@@ -642,18 +704,33 @@ onMounted(() => {
   window.addEventListener('resize', resize)
   resize()
 
-  canvasStore.callbacks.onArtworkPlaced = (artwork) => {
-    if (editorStore.location?.x === artwork.x && editorStore.location.y === artwork.y) {
-      editorLocationTaken.value = true
-    }
-  }
-
   onUnmounted(() => {
-    canvasStore.callbacks.onArtworkPlaced = undefined
     if (animationFrame) {
       cancelAnimationFrame(animationFrame)
     }
     window.removeEventListener('resize', resize)
   })
 })
+
+watch(
+  () => props.canvasId,
+  async () => {
+    await unsubscribeFromCanvas()
+    chunks.clear()
+    subscribeToCanvas(props.canvasId)
+    selectedLocation.value = null
+    editorStore.isOpen = false
+    editorStore.location = null
+    editorLocationTaken.value = false
+  },
+  { immediate: true },
+)
+watch(
+  () => props,
+  ({ x, y, z, selected }) => {
+    setLocation(x, y, z)
+    if (selected) setSelectedLocation({ x, y })
+  },
+  { deep: true, immediate: true },
+)
 </script>

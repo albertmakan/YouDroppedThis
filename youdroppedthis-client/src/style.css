@@ -2,6 +2,7 @@
 
 @theme {
   --color-primary: var(--color-teal-500);
+  --color-secondary: var(--color-amber-500);
   --color-code-editor: var(--color-neutral-900);
   --color-code-num: var(--color-lime-300);
   --color-code-str: var(--color-green-500);
@@ -22,6 +23,15 @@
 @layer base {
   html {
     @apply font-mono bg-neutral-950 text-neutral-200;
+  }
+
+  .dotted-background {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      var(--color-neutral-800) 1px,
+      transparent 0
+    );
+    background-size: 20px 20px;
   }
 }
 

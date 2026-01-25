@@ -12,11 +12,13 @@
         @click="colorPickerOpen = !colorPickerOpen"
       >
         Avatar
-        <div
-          class="inline-block rounded-full size-[1.4em] aspect-square text-white text-center text-2xl cursor-pointer"
-          :style="{ background: profile.avatarColor }"
-        >
-          {{ authStore.user.username.charAt(0) }}
+        <div class="text-2xl inline-block">
+          <ProfilePicture
+            :profile="{
+              username: authStore.user.username.charAt(0),
+              profile_picture: { mat: [], palette: [profile.avatarColor ?? ''] },
+            }"
+          />
         </div>
       </button>
       <div v-if="colorPickerOpen" class="text-xs text-white w-80 max-w-full">
@@ -34,10 +36,10 @@
         rows="4"
         class="block w-full bg-neutral-900 border border-neutral-600 rounded-lg px-4 py-2 my-1 text-neutral-200 focus:outline-none focus:ring-2 focus:ring-neutral-500"
         placeholder="Tell us about yourself..."
-        :maxlength="2000"
+        :maxlength="500"
       />
       <div v-if="changed" class="text-neutral-400 text-xs text-right">
-        {{ profile.bio?.length }}/2000
+        {{ profile.bio?.length }}/500
       </div>
     </div>
     <div>
@@ -58,6 +60,7 @@ import { useToast } from '@/composables/useToast'
 import { useUpdateProfile } from '@/composables/useProfiles'
 import type { AxiosError } from 'axios'
 import ColorPicker from '@/components/Editor/ColorPicker.vue'
+import ProfilePicture from '../ProfilePicture.vue'
 
 const { mutate: mutateUpdateProfile } = useUpdateProfile()
 

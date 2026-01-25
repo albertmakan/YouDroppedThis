@@ -28,7 +28,7 @@
         >
           <span class="size-5">
             <PaletteIcon v-if="tab === 'placed'" />
-            <CollectionIcon v-else />
+            <CollectIcon v-else />
           </span>
           <span class="capitalize sm:inline hidden">{{ tab }}</span>
           <span class="text-xs text-neutral-400 bg-neutral-800 px-1 rounded-full">
@@ -45,7 +45,7 @@
         >
           <div class="m-auto mt-8 w-4/5" @click.stop>
             <div class="border border-neutral-600 rounded-t-lg bg-black p-2 flex justify-between">
-              <ProfileCard :user-id="selectedArtwork.user_id" />
+              <ProfileCard :user-id="selectedArtwork.created_by" />
               <router-link
                 class="size-6 cursor-pointer shrink-0"
                 :to="`/c/${selectedArtwork.canvas_id}?x=${selectedArtwork.x}&y=${selectedArtwork.y}&selected`"
@@ -53,7 +53,7 @@
                 <LocationIcon />
               </router-link>
             </div>
-            <div :style="{ background: selectedArtwork.pixel_data.bg || CANVAS_BACKGROUND }">
+            <div class="bg-zinc-900" :style="{ backgroundColor: selectedArtwork.pixel_data.bg }">
               <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
             </div>
             <div
@@ -105,7 +105,7 @@
           </template>
           <template v-else>
             <div class="max-w-32 mx-auto mb-4 text-neutral-400">
-              <CollectionIcon />
+              <CollectIcon />
             </div>
             <h3 class="text-xl my-2">No artworks collected yet</h3>
             <p v-if="userId === authStore.user?.id" class="my-6 text-sm">
@@ -120,8 +120,11 @@
             <div
               v-for="artwork in page.artworks"
               :key="artwork.id"
-              class="aspect-square overflow-hidden cursor-pointer sm:w-32"
-              :style="{ background: artwork.pixel_data.bg || CANVAS_BACKGROUND }"
+              :class="[
+                'aspect-square overflow-hidden cursor-pointer sm:w-32 bg-zinc-900',
+                artwork.is_expired ? 'opacity-40' : '',
+              ]"
+              :style="{ backgroundColor: artwork.pixel_data.bg }"
               tabindex="0"
               @click="selectedArtwork = artwork"
             >
@@ -153,13 +156,12 @@
 import { ref, toRef } from 'vue'
 import type { Artwork } from '@/shared/types'
 import { useAuthStore } from '@/stores/auth'
-import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import { useProfile } from '@/composables/useProfiles'
 import { ITEMS_PER_PAGE, useUserArtworks } from '@/composables/useUserArtworks'
 import { formatRelativeTime, getH_M_S } from '@/utils/date'
 import XMarkIcon from '@/assets/icons/xmark.svg'
 import PaletteIcon from '@/assets/icons/palette.svg'
-import CollectionIcon from '@/assets/icons/collection.svg'
+import CollectIcon from '@/assets/icons/collect.svg'
 import LocationIcon from '@/assets/icons/location.svg'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import ProfilePicture from './ProfilePicture.vue'

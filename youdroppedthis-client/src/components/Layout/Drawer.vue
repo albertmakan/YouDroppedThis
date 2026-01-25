@@ -7,10 +7,10 @@
       <button @click="isOpen = false" class="p-2 cursor-pointer hover:bg-neutral-800">
         <div class="size-5"><MenuIcon /></div>
       </button>
-      <span class="px-2">YouDroppedThis</span>
+      <router-link to="/now" class="px-2">YouDroppedThis</router-link>
     </div>
     <div class="overflow-y-auto overflow-x-hidden h-[calc(100vh-40px)]">
-      <nav class="p-4 pt-0 space-y-2">
+      <nav class="p-4 space-y-2">
         <div v-if="canvasInfo" class="rounded-md bg-neutral-900">
           <h3 class="text-sm font-semibold text-amber-500 tracking-wide px-3 pt-2 mb-2">
             {{ canvasInfo?.name }}
@@ -19,15 +19,15 @@
             @click="showInfo = true"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
-            <span class="size-5"><StatsIcon /></span>
-            Canvas info
+            <span class="size-5"><InfoIcon /></span>
+            About this moment
           </button>
           <button
             @click="isLocationPopupOpen = true"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
             <span class="size-5"><LocationIcon /></span>
-            To location
+            Center view
           </button>
         </div>
         <div v-else-if="isError" class="rounded-md bg-code-error/20">
@@ -45,63 +45,46 @@
             @click="showCollection = true"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
-            <span class="size-5"><CollectionIcon /></span>
-            My collection
+            <span class="size-5"><CollectIcon /></span>
+            Collected pieces
           </button>
         </div>
         <div class="mt-6">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
-            Economy
+            Participation
           </h3>
-          <router-link
-            to="/settings/purchase"
-            class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
-          >
-            <span class="size-5"><CoinsIcon /></span>
-            Buy coins
-            <span class="text-xs text-code-warn bg-code-warn-bg px-2 py-1 rounded-full ml-auto">
-              FREE
-            </span>
-          </router-link>
           <DailyBonus v-if="authStore.isAuthenticated" />
           <div
             v-if="authStore.isAuthenticated"
             class="mt-2 px-3 py-2 bg-neutral-900 rounded text-sm"
           >
             <div class="text-xs">Balance:</div>
-            <div class="text-lg font-bold text-primary">{{ authStore.user?.balance || 0 }}</div>
+            <div class="text-lg font-bold text-primary">
+              {{ authStore.user?.balance || 0 }} coins
+            </div>
           </div>
         </div>
         <div class="mt-6">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
-            Community
+            Create
           </h3>
-          <a
-            href="#https://discord.com/invite/youdroppedthis"
+          <router-link
+            to="/new"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
-            <span class="size-5"><MessageIcon /></span>
-            Discord community
-          </a>
+            <span class="size-5 shrink-0"><PlusIcon /></span>
+            Host a moment
+          </router-link>
         </div>
         <div class="mt-6">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
-            Top canvases
+            Hosted
           </h3>
-          <router-link
-            v-for="canvasLink in topCanvases"
-            :to="`/c/${canvasLink.id}`"
-            class="flex gap-3 items-center text-left px-3 py-1 rounded-lg hover:bg-neutral-800 text-sm"
-            :key="canvasLink.id"
-          >
-            <div
-              class="rounded-full size-4"
-              :style="{ background: canvasLink.background_color || CANVAS_BACKGROUND }"
-            />
-            <span :class="{ 'font-semibold': canvasLink.id === canvasId }">
-              {{ canvasLink.name }}
-            </span>
-          </router-link>
+          <CanvasesList
+            v-if="authStore.user"
+            :user-id="authStore.user.id"
+            :active-canvas-id="canvasId"
+          />
         </div>
       </nav>
     </div>
@@ -128,25 +111,23 @@
 <script setup lang="ts">
 import { ref, toRef, watch } from 'vue'
 import type { AxiosError } from 'axios'
-import { CANVAS_BACKGROUND } from '@/stores/canvas'
 import { useAuthStore } from '@/stores/auth'
-import { useCanvas, useTopCanvases } from '@/composables/useCanvases'
+import { useCanvas } from '@/composables/useCanvases'
 import MenuIcon from '@/assets/icons/menu.svg'
-import StatsIcon from '@/assets/icons/stats.svg'
+import InfoIcon from '@/assets/icons/info.svg'
 import LocationIcon from '@/assets/icons/location.svg'
-import CollectionIcon from '@/assets/icons/collection.svg'
-import CoinsIcon from '@/assets/icons/coins.svg'
-import MessageIcon from '@/assets/icons/message.svg'
+import CollectIcon from '@/assets/icons/collect.svg'
+import PlusIcon from '@/assets/icons/plus.svg'
 import SelectLocationPopup from '@/components/Canvas/SelectLocationPopup.vue'
 import CanvasInfoPopup from '@/components/Canvas/CanvasInfoPopup.vue'
 import DailyBonus from '@/components/User/DailyBonusButton.vue'
 import UserCollection from '@/components/User/UserCollection.vue'
+import CanvasesList from '../User/CanvasesList.vue'
 
 const props = defineProps<{ canvasId?: number }>()
 
 const authStore = useAuthStore()
 const { data: canvasInfo, isError, error: canvasError } = useCanvas(toRef(props, 'canvasId'))
-const { data: topCanvases } = useTopCanvases()
 
 const isOpen = ref(false)
 const showInfo = ref(false)

@@ -1,15 +1,58 @@
 import { Router } from "../../deps.ts";
+import { authMiddleware } from "../../middleware/auth.ts";
 import { CanvasService } from "./service.ts";
+import { canvasHostingRequestSchema } from "./validation.ts";
 
 export const canvasRouter = new Router();
 
-canvasRouter.get("/", async (ctx) => {
+canvasRouter.get("/hosted-by/:userId", async (ctx) => {
+  const userId = ctx.params.userId;
+  const limit = parseInt(ctx.request.url.searchParams.get("limit") || "16");
+  const page = parseInt(ctx.request.url.searchParams.get("page") || "0");
   try {
-    const topCanvases = await CanvasService.getTopCanvases();
-    ctx.response.body = topCanvases;
+    const canvases = await CanvasService.getHostedCanvasesByUser(
+      userId,
+      page,
+      limit
+    );
+    ctx.response.body = { canvases };
   } catch {
     ctx.response.status = 500;
     ctx.response.body = { error: "Failed to get canvases" };
+  }
+});
+
+canvasRouter.get("/now", async (ctx) => {
+  try {
+    const canvases = await CanvasService.getNowActiveCanvases();
+    ctx.response.body = { canvases };
+  } catch {
+    ctx.response.status = 500;
+    ctx.response.body = { error: "Failed to get canvases" };
+  }
+});
+
+canvasRouter.post("/", authMiddleware, async (ctx) => {
+  const userId = ctx.state.user.id;
+  const body = await ctx.request.body().value;
+  const hostingRequest = canvasHostingRequestSchema.safeParse(body);
+  if (!hostingRequest.success) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: hostingRequest.error };
+    return;
+  }
+  try {
+    const { canvas, error, code, userProfile } =
+      await CanvasService.createCanvas(userId, hostingRequest.data);
+    if (error) {
+      ctx.response.status = code;
+      ctx.response.body = { error };
+      return;
+    }
+    ctx.response.body = { canvas, userProfile };
+  } catch (error) {
+    ctx.response.status = 500;
+    ctx.response.body = { error };
   }
 });
 

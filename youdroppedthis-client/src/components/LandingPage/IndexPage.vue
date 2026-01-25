@@ -1,21 +1,32 @@
 <template>
-  <div class="max-w-6xl mx-auto px-6 py-16">
-    <!-- Header -->
-    <header class="text-center mb-20">
+  <div class="max-w-6xl mx-auto px-6">
+    <!-- Hero Section -->
+    <header class="text-center py-24 md:py-32">
       <h1
-        class="text-4xl sm:text-6xl font-bold mb-6 bg-gradient-to-r from-teal-500 to-amber-500 from-40% bg-clip-text text-transparent"
+        class="text-4xl sm:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary from-40% bg-clip-text text-transparent"
       >
         YouDroppedThis
       </h1>
-      <p class="text-xl text-neutral-400 mb-10">
-        Collaborative pixel art that lives, breathes, and disappears
+      <p class="text-2xl md:text-3xl text-neutral-300 mb-4 font-light">
+        A shared canvas for moments, not monuments.
       </p>
-      <router-link
-        to="/c/1"
-        class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-12 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-teal-500/50"
-      >
-        Enter the Canvas
-      </router-link>
+      <p class="text-lg text-neutral-500 mb-12 max-w-2xl mx-auto">
+        Pixel art appears, lives for a while, and quietly fades.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <router-link
+          to="/now"
+          class="inline-block bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary/60 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary/50"
+        >
+          Enter a moment
+        </router-link>
+        <router-link
+          to="#how-it-works"
+          class="text-neutral-400 hover:text-neutral-300 transition-colors"
+        >
+          Learn how it works
+        </router-link>
+      </div>
     </header>
 
     <!-- Demo Canvas -->
@@ -23,7 +34,7 @@
       <div class="border border-neutral-600 rounded-2xl max-w-lg mx-auto">
         <canvas
           ref="canvasRef"
-          class="w-full aspect-square rounded-lg opacity-40"
+          class="w-full aspect-square rounded-lg opacity-30"
           style="image-rendering: pixelated"
           width="64"
           height="64"
@@ -32,145 +43,203 @@
       </div>
     </section>
 
-    <!-- Features -->
-    <section class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-24">
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><draw-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Drop Your Art</h3>
-        <p class="text-neutral-400">
-          Place pixel art on a shared canvas. Simple grid-based placement means no overlap, just
-          pure collaboration.
-        </p>
-      </div>
+    <!-- What Happens Here -->
+    <section class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">What happens on a canvas</h2>
 
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><timer-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Ephemeral by Design</h3>
-        <p class="text-neutral-400">
-          Art disappears after 24 hours. Every canvas is a moment in time, never to be repeated
-          exactly the same way.
-        </p>
-      </div>
+      <div class="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+        <div class="text-center">
+          <div class="size-10 mb-4 text-neutral-400 mx-auto"><draw-icon /></div>
+          <h3 class="text-xl font-semibold mb-3">You drop something</h3>
+          <p class="text-neutral-400 leading-relaxed">
+            Place a small piece of pixel art on a shared grid. Everyone works within the same
+            limits.
+          </p>
+        </div>
 
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><heart-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Collect & Curate</h3>
-        <p class="text-neutral-400">
-          Found something you love? Collect artwork after it's been visible for a while. Build your
-          personal gallery.
-        </p>
-      </div>
+        <div class="text-center">
+          <div class="size-10 mb-4 text-neutral-400 mx-auto"><users-icon /></div>
+          <h3 class="text-xl font-semibold mb-3">Others respond</h3>
+          <p class="text-neutral-400 leading-relaxed">
+            The canvas updates live as people add, explore, and notice each other's work.
+          </p>
+        </div>
 
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><users-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Real-Time Collaboration</h3>
-        <p class="text-neutral-400">
-          Watch the canvas evolve live. Zoom, explore, and see what others are creating in the
-          moment.
-        </p>
+        <div class="text-center">
+          <div class="size-10 mb-4 text-neutral-400 mx-auto"><timer-icon /></div>
+          <h3 class="text-xl font-semibold mb-3">Time takes it away</h3>
+          <p class="text-neutral-400 leading-relaxed">
+            Every piece fades after a while. Nothing stays forever — and that's the point.
+          </p>
+        </div>
       </div>
+    </section>
 
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><palette-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Themed Canvases</h3>
-        <p class="text-neutral-400">
-          Each canvas has its own palette, rules, and creative prompt. Find your vibe or create your
-          own.
-        </p>
+    <!-- Ephemerality & Collection -->
+    <section class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">
+        Nothing lasts. Some things are kept.
+      </h2>
+
+      <div class="grid md:grid-cols-2 gap-12 max-w-4xl mx-auto">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-8">
+          <h3 class="text-xl font-semibold mb-4">Art fades</h3>
+          <p class="text-neutral-400 leading-relaxed">
+            Each canvas is a moment in time. Pieces disappear quietly, making room for what comes
+            next.
+          </p>
+        </div>
+
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-8">
+          <h3 class="text-xl font-semibold mb-4">Collection is rare</h3>
+          <p class="text-neutral-400 leading-relaxed">
+            If something stays with you, you can collect it — once. Someone else has to let it go.
+          </p>
+        </div>
       </div>
+    </section>
 
-      <div
-        class="bg-neutral-900 border border-neutral-800 rounded-xl p-8 hover:border-teal-500 transition-all hover:-translate-y-1"
-      >
-        <div class="size-10 mb-4 text-neutral-400"><coins-icon /></div>
-        <h3 class="text-xl font-semibold mb-3">Intentional Creation</h3>
-        <p class="text-neutral-400">
-          Placement costs coins and has limits. Every piece matters when resources are constrained.
+    <!-- Constraints as a Feature -->
+    <section class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">Limits create meaning</h2>
+
+      <div class="max-w-3xl mx-auto space-y-8">
+        <div class="flex gap-6 items-start">
+          <div
+            class="size-8 rounded-lg bg-gradient-to-br from-primary to-secondary p-1.5 text-white shrink-0"
+          >
+            <palette-icon />
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-2">Shared palettes</h3>
+            <p class="text-neutral-400 leading-relaxed">
+              Everyone uses the same colors. The mood is set together.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-6 items-start">
+          <div
+            class="size-8 rounded-lg bg-gradient-to-br from-primary to-secondary p-1.5 text-white shrink-0"
+          >
+            <coins-icon />
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-2">Placement has a cost</h3>
+            <p class="text-neutral-400 leading-relaxed">
+              You can't drop endlessly. Each piece asks for intention.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-6 items-start">
+          <div
+            class="size-8 rounded-lg bg-gradient-to-br from-primary to-secondary p-1.5 text-white shrink-0"
+          >
+            <grid-icon />
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-2">The canvas has edges</h3>
+            <p class="text-neutral-400 leading-relaxed">
+              Space is finite. What you place changes the whole.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Canvases as Moments -->
+    <section class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-8">Each canvas is its own moment</h2>
+
+      <div class="max-w-2xl mx-auto text-center">
+        <p class="text-lg text-neutral-400 leading-relaxed mb-4">
+          Canvases have their own size, palette, and pace. Some are quiet and focused. Others are
+          loose and playful. When one fills and fades, it's gone — and a new one begins.
         </p>
+        <p class="text-neutral-500">You can host one too.</p>
       </div>
     </section>
 
     <!-- How It Works -->
-    <section class="text-center mb-24">
-      <h2 class="text-4xl font-bold mb-16">How It Works</h2>
-      <div class="grid md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-        <div>
-          <div
-            class="size-10 bg-gradient-to-b from-teal-500 to-amber-500 rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4"
-          >
-            1
-          </div>
-          <h4 class="text-lg font-semibold mb-3">Explore</h4>
-          <p class="text-neutral-400 text-sm">
-            Zoom around the canvas, discover what others have created, and find the perfect spot.
-          </p>
-        </div>
+    <section id="how-it-works" class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">How it works</h2>
 
-        <div>
+      <div class="max-w-3xl mx-auto">
+        <div class="relative">
           <div
-            class="size-10 bg-gradient-to-b from-teal-500 to-amber-500 rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4"
-          >
-            2
-          </div>
-          <h4 class="text-lg font-semibold mb-3">Create</h4>
-          <p class="text-neutral-400 text-sm">
-            Double-click an empty space to open the editor. Draw your pixel art with the canvas
-            palette.
-          </p>
-        </div>
+            class="absolute left-3 top-3 bottom-3 w-0.5 bg-gradient-to-b from-primary to-secondary hidden md:block"
+          ></div>
 
-        <div>
-          <div
-            class="size-10 bg-gradient-to-b from-teal-500 to-amber-500 rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4"
-          >
-            3
-          </div>
-          <h4 class="text-lg font-semibold mb-3">Drop</h4>
-          <p class="text-neutral-400 text-sm">
-            Place your art on the grid. It'll live for 24 hours alongside everyone else's creations.
-          </p>
-        </div>
+          <div class="space-y-12">
+            <div class="flex gap-6 items-start relative">
+              <div
+                class="size-6 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0"
+              ></div>
+              <div class="">
+                <h3 class="text-xl font-semibold mb-2">Look around</h3>
+                <p class="text-neutral-400 leading-relaxed">
+                  Zoom and explore. See what others have left behind.
+                </p>
+              </div>
+            </div>
 
-        <div>
-          <div
-            class="size-10 bg-gradient-to-b from-teal-500 to-amber-500 rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4"
-          >
-            4
+            <div class="flex gap-6 items-start relative">
+              <div
+                class="size-6 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0"
+              ></div>
+              <div class="">
+                <h3 class="text-xl font-semibold mb-2">Draw</h3>
+                <p class="text-neutral-400 leading-relaxed">
+                  Double-click an empty spot to open the editor. Work within the canvas palette.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex gap-6 items-start relative">
+              <div
+                class="size-6 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0"
+              ></div>
+              <div class="">
+                <h3 class="text-xl font-semibold mb-2">Drop</h3>
+                <p class="text-neutral-400 leading-relaxed">
+                  Place your piece on the grid. It will live here for a while.
+                </p>
+              </div>
+            </div>
+
+            <div class="flex gap-6 items-start relative">
+              <div
+                class="size-6 rounded-full bg-gradient-to-r from-primary to-secondary shrink-0"
+              ></div>
+              <div class="">
+                <h3 class="text-xl font-semibold mb-2">Let go</h3>
+                <p class="text-neutral-400 leading-relaxed">
+                  Either time takes it — or someone keeps it.
+                </p>
+              </div>
+            </div>
           </div>
-          <h4 class="text-lg font-semibold mb-3">Collect</h4>
-          <p class="text-neutral-400 text-sm">
-            See something amazing? Collect it to save in your personal gallery before it disappears.
-          </p>
         </div>
       </div>
     </section>
 
-    <!-- Footer CTA -->
-    <section class="text-center mb-16">
-      <h2 class="text-3xl font-bold mb-4">Ready to drop something?</h2>
-      <p class="text-neutral-400 text-lg mb-8">Join the canvas and leave your mark</p>
+    <!-- Final CTA -->
+    <section class="text-center py-24 mb-16">
+      <h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to be part of a moment?</h2>
+      <p class="text-lg text-neutral-400 mb-8">Drop something small. See what happens.</p>
       <router-link
-        to="/c/1"
-        class="inline-block bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white px-12 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-teal-500/50"
+        to="/now"
+        class="inline-block bg-gradient-to-r from-primary to-primary/80 hover:from-primary/80 hover:to-primary/60 text-white px-12 py-4 rounded-xl font-semibold text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-primary/50"
       >
-        Start Creating
+        Enter a moment
       </router-link>
     </section>
   </div>
 
   <!-- Footer -->
-  <footer class="border-t border-neutral-800 py-8 text-center text-neutral-500 text-sm">
-    <p>Built with curiosity by a developer who likes pixels</p>
+  <footer class="border-t border-neutral-800 py-12 text-center text-neutral-500 text-sm">
+    <p class="mb-2">Built with curiosity and care for small moments.</p>
   </footer>
 </template>
 
@@ -178,7 +247,7 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import DrawIcon from '@/assets/icons/draw.svg'
 import TimerIcon from '@/assets/icons/timer.svg'
-import HeartIcon from '@/assets/icons/heart.svg'
+import GridIcon from '@/assets/icons/grid.svg'
 import UsersIcon from '@/assets/icons/users.svg'
 import PaletteIcon from '@/assets/icons/palette.svg'
 import CoinsIcon from '@/assets/icons/coins.svg'

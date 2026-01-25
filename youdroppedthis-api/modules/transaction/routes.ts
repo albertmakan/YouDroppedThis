@@ -21,29 +21,6 @@ transactionRouter.get("/", async (ctx) => {
   }
 });
 
-// will listen to payment webhook (TODO)
-transactionRouter.post("/purchase", async (ctx) => {
-  const userId = ctx.state.user.id;
-  const { amount } = await ctx.request.body().value;
-  if (typeof amount !== "number" || amount < 1) {
-    ctx.response.status = 400;
-    ctx.response.body = { error: "Invalid amount" };
-    return;
-  }
-  try {
-    const result = await TransactionService.updateBalance(
-      userId,
-      amount,
-      "purchase",
-      ""
-    );
-    ctx.response.body = result;
-  } catch {
-    ctx.response.status = 500;
-    ctx.response.body = { error: "Failed to record transaction" };
-  }
-});
-
 transactionRouter.post("/daily-bonus", async (ctx) => {
   const userId = ctx.state.user.id;
   try {

@@ -13,8 +13,8 @@ export class ArtworkService {
     if (!canvas) {
       return { error: "Canvas not found", code: 404 };
     }
-    if (!canvas.is_active) {
-      return { error: "Canvas is inactive", code: 400 };
+    if (!canvas.accepting_artworks) {
+      return { error: "Canvas is not accepting artworks", code: 400 };
     }
 
     // Check user balance
@@ -35,8 +35,9 @@ export class ArtworkService {
     const recentPlacements = await db.queryObject<{ count: string }>`
       SELECT COUNT(*) as count
       FROM app.artworks
-      WHERE user_id = ${userId}
-        AND created_at > NOW() - INTERVAL '1 hour'`;
+      WHERE created_by = ${userId}
+        AND created_at > NOW() - INTERVAL '1 hour'
+        AND canvas_id = ${canvasId}`;
 
     if (
       parseInt(recentPlacements.rows[0].count) >=
@@ -52,7 +53,7 @@ export class ArtworkService {
       pixelData.bg = canvas.background_color;
       // Create artwork
       const artworkResult = await db.queryObject<Artwork>`
-        INSERT INTO app.artworks (canvas_id, user_id, x, y, pixel_data, expires_at, collectable_after)
+        INSERT INTO app.artworks (canvas_id, created_by, x, y, pixel_data, expires_at, collectable_after)
         VALUES (
           ${canvasId}, ${userId},
           ${x}, ${y},
@@ -65,13 +66,13 @@ export class ArtworkService {
 
       // Record transaction
       await db.queryArray`
-        INSERT INTO app.transactions (user_id, type, amount, artwork_id, description)
+        INSERT INTO app.transactions (user_id, type, amount, artwork_id, canvas_id)
         VALUES (
           ${userId},
-          'placement',
+          'drop_fee',
           ${-canvas.placement_fee},
           ${artwork.id},
-          'Artwork placement'
+          ${canvasId}
         )`;
 
       await db.queryArray("COMMIT");
@@ -138,14 +139,14 @@ export class ArtworkService {
   ) {
     const db = getDB();
 
-    const artworkResults = await db.queryObject<Artwork>`
+    const artworksResults = await db.queryObject<Artwork>`
       SELECT *
       FROM app.artworks
-      WHERE user_id = ${userId}
+      WHERE created_by = ${userId}
       ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
 
-    return artworkResults.rows;
+    return artworksResults.rows;
   }
 
   static async getCollectedArtworksByUser(
@@ -155,13 +156,13 @@ export class ArtworkService {
   ) {
     const db = getDB();
 
-    const artworkResults = await db.queryObject<Artwork>`
+    const artworksResults = await db.queryObject<Artwork>`
       SELECT *
       FROM app.artworks
       WHERE collected_by = ${userId}
       ORDER BY collected_at DESC
       LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
 
-    return artworkResults.rows;
+    return artworksResults.rows;
   }
 }

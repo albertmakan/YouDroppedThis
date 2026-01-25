@@ -8,10 +8,11 @@ export function rgbToHSL(r: number, g: number, b: number) {
 
   const lightness = (max + min) / 2
 
-  let saturation = 0
-  if (max !== min) {
-    saturation = (max - min) / (1 - Math.abs(2 * lightness - 1))
+  if (min === max) {
+    return [0, 0, Math.round(lightness * 100)]
   }
+
+  const saturation = (max - min) / (1 - Math.abs(2 * lightness - 1))
 
   let hue = 0
   if (max === normalizedR) {
@@ -58,4 +59,14 @@ export function hslToRGB(h: number, s: number, l: number) {
   }
 
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
+}
+
+const tempCanvasCTX = new OffscreenCanvas(1, 1).getContext('2d', { willReadFrequently: true })!
+
+export function colorToRGBA(color: string) {
+  tempCanvasCTX.clearRect(0, 0, 1, 1)
+  tempCanvasCTX.fillStyle = color
+  tempCanvasCTX.fillRect(0, 0, 1, 1)
+  const rgba = Array.from(tempCanvasCTX.getImageData(0, 0, 1, 1).data)
+  return rgba
 }

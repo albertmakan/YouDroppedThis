@@ -6,7 +6,7 @@
     :class="canClaimBonus ? 'bg-primary/20 text-primary' : 'opacity-50 cursor-not-allowed'"
   >
     <span class="size-5"><GiftIcon /></span>
-    {{ bonusLoading ? 'Claiming...' : 'Daily bonus' }}
+    {{ bonusLoading ? 'Claiming...' : 'Daily grant' }}
   </button>
 </template>
 
@@ -47,7 +47,7 @@ async function handleClaimBonus() {
     },
     onError: (error: any) => {
       const result = (error.response?.data ?? {}) as TransactionResult
-      toast.warning(result.message || 'Failed to claim bonus')
+      toast.warning(result.message || 'Failed to claim daily grant')
       lastBonusTime.value = result.claimedAt
       localStorage.setItem(lastBonusTimeKey(result.userId), lastBonusTime.value)
     },

@@ -19,6 +19,19 @@ CREATE SCHEMA IF NOT EXISTS "app";
 ALTER SCHEMA "app" OWNER TO "postgres";
 
 
+CREATE TYPE "app"."transaction_type" AS ENUM (
+    'drop_fee',
+    'collection_reward',
+    'daily_grant',
+    'host_reward',
+    'canvas_creation',
+    'purchase'
+);
+
+
+ALTER TYPE "app"."transaction_type" OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app"."artwork_changes"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -107,13 +120,6 @@ CREATE OR REPLACE FUNCTION "app"."update_artwork_stats_on_collect"() RETURNS "tr
         updated_at = NOW()
     WHERE id = NEW.collected_by;
     
-    -- Update canvas stats
-    UPDATE app.canvases
-    SET active_artworks_count = active_artworks_count - 1,
-        total_artworks_collected = total_artworks_collected + 1,
-        updated_at = NOW()
-    WHERE id = NEW.canvas_id;
-    
   END IF;
   
   RETURN NEW;
@@ -130,13 +136,11 @@ CREATE OR REPLACE FUNCTION "app"."update_artwork_stats_on_place"() RETURNS "trig
   UPDATE app.profiles
   SET artworks_placed_count = artworks_placed_count + 1,
       updated_at = NOW()
-  WHERE id = NEW.user_id;
+  WHERE id = NEW.created_by;
   
   -- Update canvas stats
   UPDATE app.canvases
-  SET total_artworks_placed = total_artworks_placed + 1,
-      active_artworks_count = active_artworks_count + 1,
-      updated_at = NOW()
+  SET last_artwork_at = NOW()
   WHERE id = NEW.canvas_id;
   
   RETURN NEW;
@@ -144,26 +148,6 @@ END;$$;
 
 
 ALTER FUNCTION "app"."update_artwork_stats_on_place"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app"."update_stats_on_expire"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$BEGIN
-  IF OLD.is_expired = FALSE AND NEW.is_expired = TRUE THEN
-    
-    -- Update canvas stats
-    UPDATE app.canvases
-    SET active_artworks_count = active_artworks_count - 1,
-        updated_at = NOW()
-    WHERE id = NEW.canvas_id;
-    
-  END IF;
-  
-  RETURN NEW;
-END;$$;
-
-
-ALTER FUNCTION "app"."update_stats_on_expire"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app"."update_user_balance_on_transaction"() RETURNS "trigger"
@@ -197,7 +181,7 @@ CREATE TABLE IF NOT EXISTS "app"."artworks" (
     "collectable_after" timestamp with time zone,
     "collected_at" timestamp with time zone,
     "is_expired" boolean DEFAULT false,
-    "user_id" "uuid" NOT NULL,
+    "created_by" "uuid" NOT NULL,
     "collected_by" "uuid"
 );
 
@@ -220,22 +204,22 @@ CREATE TABLE IF NOT EXISTS "app"."canvases" (
     "id" bigint NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "name" character varying NOT NULL,
-    "is_active" boolean DEFAULT true,
+    "accepting_artworks" boolean DEFAULT true,
     "placement_fee" integer DEFAULT 10,
     "artwork_expiry_minutes" integer DEFAULT (24 * 60),
     "max_artworks_per_user_per_hour" integer DEFAULT 5,
-    "min_x" integer,
-    "max_x" integer,
-    "min_y" integer,
-    "max_y" integer,
-    "premium_zone_enabled" boolean DEFAULT false,
+    "min_x" integer NOT NULL,
+    "max_x" integer NOT NULL,
+    "min_y" integer NOT NULL,
+    "max_y" integer NOT NULL,
     "description" "text",
-    "theme" character varying,
     "background_color" character varying,
-    "total_artworks_placed" bigint DEFAULT '0'::bigint,
-    "active_artworks_count" bigint DEFAULT '0'::bigint,
-    "total_artworks_collected" bigint DEFAULT '0'::bigint,
-    "updated_at" timestamp with time zone
+    "palette" "text"[],
+    "min_visibility_minutes" integer DEFAULT 1,
+    "first_artwork_at" timestamp with time zone,
+    "last_artwork_at" timestamp with time zone,
+    "created_by" "uuid",
+    "artwork_resolution" integer DEFAULT 16
 );
 
 
@@ -262,13 +246,8 @@ CREATE TABLE IF NOT EXISTS "app"."profiles" (
     "artworks_placed_count" integer DEFAULT 0,
     "artworks_collected_count" integer DEFAULT 0,
     "updated_at" timestamp with time zone DEFAULT "now"(),
-    "bio" "text"
-);
-
-
-ALTER TABLE "app"."profiles" 
-ADD CONSTRAINT username_format CHECK (
-  username ~ '^[a-zA-Z0-9_]{3,20}$'
+    "bio" "text",
+    CONSTRAINT "username_format" CHECK ((("username")::"text" ~ '^[a-zA-Z0-9_]{3,20}$'::"text"))
 );
 
 
@@ -278,11 +257,11 @@ ALTER TABLE "app"."profiles" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "app"."transactions" (
     "id" bigint NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "type" character varying NOT NULL,
+    "type" "app"."transaction_type" NOT NULL,
     "amount" integer NOT NULL,
     "artwork_id" bigint,
-    "description" "text",
-    "user_id" "uuid" NOT NULL
+    "user_id" "uuid" NOT NULL,
+    "canvas_id" bigint
 );
 
 
@@ -337,7 +316,11 @@ CREATE INDEX "artworks_expires_at_idx" ON "app"."artworks" USING "btree" ("expir
 
 
 
-CREATE INDEX "artworks_user_id_created_at_idx" ON "app"."artworks" USING "btree" ("user_id", "created_at" DESC);
+CREATE INDEX "artworks_user_id_created_at_idx" ON "app"."artworks" USING "btree" ("created_by", "created_at" DESC);
+
+
+
+CREATE INDEX "canvases_created_by_created_at_idx" ON "app"."canvases" USING "btree" ("created_by", "created_at" DESC);
 
 
 
@@ -350,10 +333,6 @@ CREATE OR REPLACE TRIGGER "handle_artwork_changes" AFTER INSERT OR UPDATE ON "ap
 
 
 CREATE OR REPLACE TRIGGER "on_artwork_collected" AFTER UPDATE OF "collected_by" ON "app"."artworks" FOR EACH ROW EXECUTE FUNCTION "app"."update_artwork_stats_on_collect"();
-
-
-
-CREATE OR REPLACE TRIGGER "on_artwork_expired" AFTER UPDATE OF "is_expired" ON "app"."artworks" FOR EACH ROW EXECUTE FUNCTION "app"."update_stats_on_expire"();
 
 
 
@@ -380,7 +359,12 @@ ALTER TABLE ONLY "app"."artworks"
 
 
 ALTER TABLE ONLY "app"."artworks"
-    ADD CONSTRAINT "artworks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "app"."profiles"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "artworks_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "app"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "app"."canvases"
+    ADD CONSTRAINT "canvases_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "app"."profiles"("id") ON DELETE SET NULL;
 
 
 
@@ -391,6 +375,11 @@ ALTER TABLE ONLY "app"."profiles"
 
 ALTER TABLE ONLY "app"."transactions"
     ADD CONSTRAINT "transactions_artwork_id_fkey" FOREIGN KEY ("artwork_id") REFERENCES "app"."artworks"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "app"."transactions"
+    ADD CONSTRAINT "transactions_canvas_id_fkey" FOREIGN KEY ("canvas_id") REFERENCES "app"."canvases"("id") ON DELETE SET NULL;
 
 
 

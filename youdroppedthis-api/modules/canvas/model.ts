@@ -1,22 +1,31 @@
 export type Canvas = {
   id: number;
-  name: string;
-  description?: string;
-  max_artworks_per_user_per_hour: number;
-  artwork_expiry_minutes: number;
-  min_visibility_minutes?: number;
-  placement_fee: number;
   created_at: string;
-  grid_size: number;
-  is_active?: boolean;
-  max_x?: number;
-  max_y?: number;
-  min_x?: number;
-  min_y?: number;
-  premium_zone_enabled?: boolean;
+  name: string;
+  accepting_artworks: boolean;
+  placement_fee: number;
+  artwork_expiry_minutes: number;
+  min_visibility_minutes: number;
+  max_artworks_per_user_per_hour: number;
+  description: string;
+  min_x: number;
+  max_x: number;
+  min_y: number;
+  max_y: number;
   background_color?: string;
-  theme?: string;
-  total_artworks_placed: number;
-  total_artworks_collected: number;
-  active_artworks_count: number;
+  palette?: string[];
+  first_artwork_at?: string;
+  last_artwork_at?: string;
+  created_by?: string;
+  artwork_resolution: number;
+};
+
+export type CanvasHostingRequest = {
+  name: string;
+  description: string;
+  canvasSize: "sm" | "md" | "lg";
+  artworkSize: number;
+  palette: string[];
+  backgroundColor: string;
+  placementFee: number;
 };

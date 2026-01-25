@@ -13,7 +13,7 @@
         class="absolute bottom-full left-1/2 -translate-x-1/2 min-w-full box-content flex gap-4 justify-between pointer-events-auto bg-black/90 backdrop-blur-sm rounded-lg p-2 border border-neutral-600"
         @touchmove.prevent.passive
       >
-        <ProfileCard :user-id="artwork.user_id" />
+        <ProfileCard :user-id="artwork.created_by" />
         <div class="relative h-6">
           <button class="size-6 text-neutral-700 cursor-pointer peer">
             <svg viewBox="-1 -1 2 2" class="-rotate-90">
@@ -35,14 +35,14 @@
       </div>
 
       <div
-        class="absolute top-full left-1/2 -translate-x-1/2 min-w-full box-content bg-black/90 backdrop-blur-sm rounded-lg flex justify-center p-1 border border-neutral-600"
+        class="absolute top-full left-1/2 -translate-x-1/2 min-w-full box-content bg-black/90 backdrop-blur-sm rounded-lg flex justify-center p-2 border border-neutral-600"
       >
         <button
           v-if="isCollectable"
           @click="emit('collect')"
           @touchmove.prevent.passive
-          class="cursor-pointer pointer-events-auto size-8"
-          title="Collect"
+          class="cursor-pointer pointer-events-auto size-6"
+          title="Keep this?"
         >
           <CollectIcon />
         </button>
@@ -55,7 +55,7 @@
 import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import type { Artwork } from '@/shared/types'
 import CollectIcon from '@/assets/icons/collect.svg'
-import ProfileCard from '../User/ProfileCard.vue'
+import ProfileCard from '@/components/User/ProfileCard.vue'
 import { getH_M_S } from '@/utils/date'
 
 const { top, left, size, artwork } = defineProps<{

@@ -7,7 +7,7 @@ export type PixelData = {
 export type Artwork = {
   id: number;
   pixel_data: PixelData;
-  user_id: string;
+  created_by: string;
   canvas_id: number;
   x: number;
   y: number;

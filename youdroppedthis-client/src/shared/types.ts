@@ -22,7 +22,7 @@ export type Profile = {
 export type Artwork = {
   id: number
   pixel_data: PixelData
-  user_id: string
+  created_by: string
   canvas_id: number
   x: number
   y: number
@@ -40,34 +40,38 @@ export type Artwork = {
 
 export type CanvasInfo = {
   id: number
-  name: string
-  description?: string
-  max_artworks_per_user_per_hour: number
-  artwork_expiry_minutes: number
-  min_visibility_minutes?: number
-  placement_fee: number
   created_at: string
-  updated_at?: string
-  is_active?: boolean
-  max_x?: number
-  max_y?: number
-  min_x?: number
-  min_y?: number
-  premium_zone_enabled?: boolean
+  name: string
+  accepting_artworks: boolean
+  placement_fee: number
+  artwork_expiry_minutes: number
+  min_visibility_minutes: number
+  max_artworks_per_user_per_hour: number
+  description: string
+  min_x: number
+  max_x: number
+  min_y: number
+  max_y: number
   background_color?: string
-  theme?: string
   palette?: string[]
-  total_artworks_placed: number
-  total_artworks_collected: number
-  active_artworks_count: number
+  first_artwork_at?: string
+  last_artwork_at?: string
+  created_by?: string
+  artwork_resolution: number
 }
 
 export type Transaction = {
   id: number
   user_id: string
   amount: number
-  type: string
+  type:
+    | 'drop_fee'
+    | 'collection_reward'
+    | 'daily_grant'
+    | 'host_reward'
+    | 'canvas_creation'
+    | 'purchase'
   created_at: string
-  description?: string
   artwork_id?: number
+  canvas_id?: number
 }

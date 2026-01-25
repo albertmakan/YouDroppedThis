@@ -10,38 +10,25 @@ export const useEditorStore = defineStore('editor', () => {
   const location = ref<{ x: number; y: number } | null>(null)
   const isPlacing = ref(false)
   const selectedColor = ref('#ffffff')
-  const pixels = ref(Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => emptyPixel)))
+  const pixels = ref([[emptyPixel]])
   const offscreenCanvas = new OffscreenCanvas(64, 64)
   const palette = ref(['#ffffff'])
+  const id = ref(0)
   const tool = ref<'pen' | 'eraser' | 'fill' | 'code' | null>('pen')
   const expression = ref('')
 
-  const history = ref<{ pixels: string[][] }[]>([{ pixels: pixels.value.map((row) => [...row]) }])
+  const history = ref([{ pixels: [[emptyPixel]] }])
   const historyStep = ref(0)
   const canUndo = computed(() => historyStep.value > 0)
   const canRedo = computed(() => historyStep.value < history.value.length - 1)
+
+  const drafts = new Map<number, string[][]>()
 
   const context = ref({
     x: 0,
     y: 0,
     pixel: (x: number, y: number) => pixels.value[y]?.[x] ?? emptyPixel,
     palette: (i: number) => palette.value[f.mod(Math.round(i), palette.value.length)],
-  })
-
-  const resolution = computed({
-    get: () => pixels.value.length,
-    set: (newResolution) => {
-      const newPixels = Array.from({ length: newResolution }, () =>
-        Array.from({ length: newResolution }, () => emptyPixel),
-      )
-      const r = newResolution / resolution.value
-      for (let y = 0; y < newResolution; y++) {
-        for (let x = 0; x < newResolution; x++) {
-          newPixels[y][x] = pixels.value[Math.floor(y / r)][Math.floor(x / r)]
-        }
-      }
-      pixels.value = newPixels
-    },
   })
 
   function saveState() {
@@ -55,12 +42,14 @@ export const useEditorStore = defineStore('editor', () => {
       history.value.shift()
       historyStep.value--
     }
+    drafts.set(id.value, pixels.value)
   }
 
   function undo() {
     if (canUndo.value) {
       historyStep.value--
       pixels.value = history.value[historyStep.value].pixels.map((row) => [...row])
+      drafts.set(id.value, pixels.value)
     }
   }
 
@@ -68,6 +57,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (canRedo.value) {
       historyStep.value++
       pixels.value = history.value[historyStep.value].pixels.map((row) => [...row])
+      drafts.set(id.value, pixels.value)
     }
   }
 
@@ -75,9 +65,9 @@ export const useEditorStore = defineStore('editor', () => {
     const color = tool.value === 'eraser' ? emptyPixel : selectedColor.value
     if (
       y < 0 ||
-      y >= resolution.value ||
+      y >= pixels.value.length ||
       x < 0 ||
-      x >= resolution.value ||
+      x >= pixels.value[y].length ||
       pixels.value[y][x] === color
     )
       return false
@@ -89,7 +79,7 @@ export const useEditorStore = defineStore('editor', () => {
       const stack = [{ x, y }]
       while (stack.length > 0) {
         const { x, y } = stack.pop()!
-        if (x < 0 || x >= resolution.value || y < 0 || y >= resolution.value) continue
+        if (y < 0 || y >= newPixels.length || x < 0 || x >= newPixels[y].length) continue
         if (newPixels[y][x] !== originalColor || newPixels[y][x] === color) continue
         newPixels[y][x] = color
         stack.push({ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 })
@@ -99,15 +89,27 @@ export const useEditorStore = defineStore('editor', () => {
     return true
   }
 
-  function setPalette(newPalette: string[]) {
-    palette.value = newPalette
-    if (!newPalette.includes(selectedColor.value)) selectedColor.value = newPalette[0] || emptyPixel
+  function clearCanvas() {
+    pixels.value = pixels.value.map((r) => r.map(() => emptyPixel))
   }
 
-  function clearCanvas() {
-    pixels.value = Array.from({ length: resolution.value }, () =>
-      Array.from({ length: resolution.value }, () => emptyPixel),
-    )
+  function setConfig(config: { canvasId: number; palette: string[]; resolution: number }) {
+    if (id.value === config.canvasId) return false
+    const { canvasId, palette: newPalette, resolution } = config
+    id.value = canvasId
+    palette.value = newPalette
+    if (!newPalette.includes(selectedColor.value)) selectedColor.value = newPalette[0] || emptyPixel
+
+    if (drafts.has(canvasId)) {
+      pixels.value = drafts.get(canvasId)!
+    } else {
+      pixels.value = Array.from({ length: resolution }, () =>
+        Array.from({ length: resolution }, () => emptyPixel),
+      )
+    }
+    history.value = [{ pixels: pixels.value.map((row) => [...row]) }]
+    historyStep.value = 0
+    return true
   }
 
   function applyFunction() {
@@ -116,13 +118,13 @@ export const useEditorStore = defineStore('editor', () => {
     const postfix = tokensToPostfix(tokens)
     const variables = { ...context.value }
     const newPixels = pixels.value.map((r) => [...r])
-    for (let y = 0; y < resolution.value; y++) {
-      for (let x = 0; x < resolution.value; x++) {
+    for (let y = 0; y < newPixels.length; y++) {
+      for (let x = 0; x < newPixels[y].length; x++) {
         variables.x = x
         variables.y = y
         const color = solvePostfix(postfix, variables)
         newPixels[y][x] =
-          typeof color === 'string' && color.match(/^(#[0-9A-Fa-f]{6}|)$/) ? color : emptyPixel
+          typeof color === 'string' && palette.value.includes(color) ? color : emptyPixel
       }
     }
     pixels.value = newPixels
@@ -148,7 +150,6 @@ export const useEditorStore = defineStore('editor', () => {
     isOpen,
     location,
     isPlacing,
-    resolution,
     selectedColor,
     pixels,
     tool,
@@ -164,6 +165,6 @@ export const useEditorStore = defineStore('editor', () => {
     undo,
     redo,
     offscreenCanvas,
-    setPalette,
+    setConfig,
   }
 })

@@ -1,7 +1,7 @@
 <template>
   <div
-    class="w-fit h-fit fixed text-neutral-200 border border-neutral-600 border-dashed pointer-events-none box-border"
-    :style="{ left: `${left}px`, top: `${top}px` }"
+    class="w-fit h-fit fixed text-neutral-200 border border-dashed pointer-events-none box-border"
+    :style="{ left: `${left}px`, top: `${top}px`, borderColor: gridColor }"
   >
     <div class="relative min-w-full">
       <div
@@ -22,19 +22,6 @@
             <XMarkIcon />
           </button>
         </div>
-        <label>
-          Resolution:
-          <select
-            v-model.number="editorStore.resolution"
-            @change="editorStore.saveState"
-            class="bg-neutral-900 p-1 rounded-md cursor-pointer hover:bg-neutral-800 mx-2 pointer-events-auto"
-          >
-            <option value="8">8 x 8</option>
-            <option value="16">16 x 16</option>
-            <option value="32">32 x 32</option>
-            <option value="64">64 x 64</option>
-          </select>
-        </label>
         <div
           class="flex justify-center gap-2 mt-4 *:pointer-events-auto *:size-8 *:p-1 *:rounded-md *:cursor-pointer"
         >
@@ -92,9 +79,10 @@
           <label for="expression-field">pixel(x,y) :=</label>
           <button
             @click="isExpressionHelpOpen = !isExpressionHelpOpen"
-            class="ml-auto border px-1 rounded-full cursor-pointer bg-neutral-900 hover:bg-neutral-800"
+            class="ml-auto size-5 rounded-full cursor-pointer bg-neutral-900 hover:bg-neutral-800"
           >
-            {{ isExpressionHelpOpen ? '×' : '?' }}
+            <XMarkIcon v-if="isExpressionHelpOpen" />
+            <InfoIcon v-else />
           </button>
         </div>
         <template v-if="isExpressionHelpOpen">
@@ -167,7 +155,7 @@
         <div class="flex gap-2 flex-wrap min-w-64 m-auto mb-4 *:pointer-events-auto">
           <div class="h-6 w-14" :style="{ background: editorStore.selectedColor }"></div>
           <button
-            v-for="(color, i) in palette"
+            v-for="(color, i) in canvasInfo.palette ?? DEFAULT_PALETTE"
             :key="color"
             :class="[
               'w-6 h-6 rounded-md cursor-pointer',
@@ -194,9 +182,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, useTemplateRef, nextTick } from 'vue'
+import { ref, onMounted, watch, computed, useTemplateRef, nextTick, type DeepReadonly } from 'vue'
 import { useEditorStore } from '@/stores/editor'
-import { GRID_COLOR } from '@/stores/canvas'
 import DrawIcon from '@/assets/icons/draw.svg'
 import FillIcon from '@/assets/icons/fill.svg'
 import EraseIcon from '@/assets/icons/erase.svg'
@@ -206,9 +193,29 @@ import RedoIcon from '@/assets/icons/redo.svg'
 import GridIcon from '@/assets/icons/grid.svg'
 import SparkleIcon from '@/assets/icons/sparkle.svg'
 import CheckmarkIcon from '@/assets/icons/checkmark.svg'
+import InfoIcon from '@/assets/icons/info.svg'
 import ExpressionEditor from '@/components/Editor/ExpressionEditor.vue'
 import { renderArtwork } from '@/components/Artwork/renderArtwork'
 import ExpressionHelp from './ExpressionHelp.vue'
+import type { CanvasInfo } from '@/shared/types'
+
+const DEFAULT_PALETTE = [
+  '#000000',
+  '#FFFFFF',
+  '#FF0000',
+  '#00FF00',
+  '#0000FF',
+  '#FFFF00',
+  '#FF00FF',
+  '#00FFFF',
+  '#808080',
+  '#800000',
+  '#808000',
+  '#008000',
+  '#800080',
+  '#008080',
+  '#000080',
+]
 
 const pixelCanvas = useTemplateRef<HTMLCanvasElement>('pixel-canvas')
 
@@ -220,11 +227,12 @@ const tools = [
   { name: 'code', icon: SparkleIcon },
 ] as const
 
-const { top, left, size, palette } = defineProps<{
+const { top, left, size, canvasInfo, gridColor } = defineProps<{
   top: number
   left: number
   size: number
-  palette: string[]
+  canvasInfo: DeepReadonly<CanvasInfo>
+  gridColor: string
 }>()
 
 const emit = defineEmits<{
@@ -238,18 +246,19 @@ const isExpressionHelpOpen = ref(false)
 const showGrid = ref(true)
 const isDrawing = ref(false)
 const isCode = computed(() => editorStore.tool === 'code')
-const pixelSize = computed(() => size / editorStore.resolution)
+const pixelSize = computed(() => size / canvasInfo.artwork_resolution)
 
 const coloredPixelCount = ref(0)
 const isFilledEnough = computed(
-  () => coloredPixelCount.value >= (editorStore.resolution * editorStore.resolution) / 8,
+  () =>
+    coloredPixelCount.value >= (canvasInfo.artwork_resolution * canvasInfo.artwork_resolution) / 8,
 )
 
 function drawCanvas() {
   if (!pixelCanvas.value) return
   const ctx = pixelCanvas.value.getContext('2d')
   if (!ctx) return
-  const resolution = editorStore.resolution
+  const resolution = canvasInfo.artwork_resolution
   const offscreenCtx = editorStore.offscreenCanvas.getContext('2d')!
   offscreenCtx.clearRect(0, 0, offscreenCtx.canvas.width, offscreenCtx.canvas.height)
   coloredPixelCount.value = renderArtwork(editorStore.pixels, offscreenCtx, 0, 0, 64 / resolution)
@@ -257,8 +266,7 @@ function drawCanvas() {
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(editorStore.offscreenCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height)
   if (showGrid.value) {
-    ctx.strokeStyle = GRID_COLOR
-    ctx.globalCompositeOperation = 'difference'
+    ctx.strokeStyle = gridColor
     ctx.lineWidth = 0.5
     for (let x = 0; x <= resolution; x++) {
       ctx.beginPath()
@@ -272,7 +280,6 @@ function drawCanvas() {
       ctx.lineTo(size, y * pixelSize.value)
       ctx.stroke()
     }
-    ctx.globalCompositeOperation = 'source-over'
   }
 }
 
@@ -321,9 +328,16 @@ function applyExpression() {
 onMounted(drawCanvas)
 watch([showGrid, pixelSize], () => nextTick(drawCanvas))
 watch(
-  () => palette,
-  () => editorStore.setPalette(palette),
+  () => canvasInfo,
+  () => {
+    editorStore.setConfig({
+      canvasId: canvasInfo.id,
+      palette: [...(canvasInfo.palette ?? DEFAULT_PALETTE)],
+      resolution: canvasInfo.artwork_resolution,
+    })
+  },
   { immediate: true },
 )
+
 editorStore.$subscribe(drawCanvas)
 </script>

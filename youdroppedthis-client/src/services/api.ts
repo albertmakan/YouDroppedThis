@@ -42,10 +42,30 @@ export const authApi = {
   },
 }
 
+export interface CanvasHostingRequest {
+  name: string
+  description: string
+  canvasSize: 'sm' | 'md' | 'lg'
+  artworkSize: number
+  palette: string[]
+  backgroundColor: string
+  placementFee: number
+}
+
 export const canvasApi = {
-  async getTopCanvases() {
-    const response = await api.get(`/canvases`)
-    return response.data as Pick<CanvasInfo, 'id' | 'name' | 'background_color'>[]
+  async getCanvases(userId: string, page: number = 1, limit: number = 16) {
+    const response = await api.get(`/canvases/hosted-by/${userId}`, { params: { page, limit } })
+    return response.data as { canvases: CanvasInfo[] }
+  },
+
+  async getNowActiveCanvases(userId?: string) {
+    const response = await api.get(`/canvases/now`, { params: { userId } })
+    return response.data as { canvases: CanvasInfo[] }
+  },
+
+  async createCanvas(hostingRequest: CanvasHostingRequest) {
+    const response = await api.post(`/canvases`, hostingRequest)
+    return response.data as { canvas: CanvasInfo; userProfile: Profile }
   },
 
   async getCanvasInfo(id: number) {
@@ -124,12 +144,6 @@ export const transactionApi = {
 
   async claimDailyBonus() {
     const response = await api.post('/transactions/daily-bonus')
-    return response.data as TransactionResult
-  },
-
-  // temporary
-  async purchaseCoins(amount: number) {
-    const response = await api.post('/transactions/purchase', { amount })
     return response.data as TransactionResult
   },
 }

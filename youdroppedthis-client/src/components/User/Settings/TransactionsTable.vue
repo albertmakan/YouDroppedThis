@@ -10,7 +10,6 @@
         <tr class="border-b border-neutral-600 text-sm text-neutral-400">
           <th class="text-left py-3 px-4 font-medium">Date</th>
           <th class="text-left py-3 px-4 font-medium">Type</th>
-          <th class="text-left py-3 px-4 font-medium">Description</th>
           <th class="text-right py-3 px-4 font-medium">Amount</th>
         </tr>
       </thead>
@@ -26,17 +25,12 @@
               <span
                 :class="[
                   'inline-block px-2 py-1 rounded text-xs font-medium',
-                  transaction.type === 'purchase' || transaction.type === 'bonus'
-                    ? 'bg-green-950 text-green-200'
-                    : transaction.type === 'spent' || transaction.type === 'placement'
-                      ? 'bg-red-950 text-red-200'
-                      : 'bg-neutral-700 text-neutral-200',
+                  tagColors[transaction.type],
                 ]"
               >
                 {{ transaction.type }}
               </span>
             </td>
-            <td class="py-3 px-4 text-sm">{{ transaction.description }}</td>
             <td
               :class="[
                 'py-3 px-4 text-sm text-right font-medium',
@@ -76,6 +70,15 @@
 <script setup lang="ts">
 import { useUserTransactions } from '@/composables/useUserTransactions'
 import { toRef } from 'vue'
+
+const tagColors = {
+  drop_fee: 'bg-red-950 text-red-200',
+  collection_reward: '',
+  daily_grant: 'bg-green-950 text-green-200',
+  host_reward: '',
+  canvas_creation: 'bg-red-950 text-red-200',
+  purchase: 'bg-green-950 text-green-200',
+} as const
 
 const props = defineProps<{ userId: string }>()
 

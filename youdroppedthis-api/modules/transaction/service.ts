@@ -23,15 +23,14 @@ export class TransactionService {
   static async updateBalance(
     userId: string,
     amount: number,
-    type: string,
-    description: string
+    type: Transaction["type"]
   ) {
     const db = getDB();
 
     // Record transaction, trigger will update balance
     await db.queryArray`
-      INSERT INTO app.transactions (user_id, type, amount, description)
-      VALUES (${userId}, ${type}, ${amount}, ${description})`;
+      INSERT INTO app.transactions (user_id, type, amount)
+      VALUES (${userId}, ${type}, ${amount})`;
 
     // Get updated balance
     const balanceResult = await db.queryObject<{ balance: number }>`
@@ -57,7 +56,7 @@ export class TransactionService {
       FROM app.transactions
       WHERE user_id = ${userId}
         AND created_at > CURRENT_DATE
-        AND type = 'bonus'`;
+        AND type = 'daily_grant'`;
 
     if (lastBonusResult.rows.length > 0) {
       return {
@@ -69,11 +68,6 @@ export class TransactionService {
     }
 
     // Award daily bonus
-    return await this.updateBalance(
-      userId,
-      DAILY_BONUS,
-      "bonus",
-      "Daily bonus"
-    );
+    return await this.updateBalance(userId, DAILY_BONUS, "daily_grant");
   }
 }
