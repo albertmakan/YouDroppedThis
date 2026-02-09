@@ -4,7 +4,7 @@
     :style="{ backgroundColor: canvas.background_color }"
   >
     <div class="bg-black/90 border border-neutral-600 border-b-0 rounded-t-lg p-2">
-      {{ canvas.name }}
+      <h3 class="line-clamp-1" :title="canvas.name">{{ canvas.name }}</h3>
       <div
         class="text-xs text-neutral-400 line-clamp-1 whitespace-pre-wrap"
         ref="description"
@@ -19,11 +19,11 @@
           v-for="color in canvas.palette"
           :style="{ background: color }"
           class="rounded-full size-2"
-        ></div>
+        />
       </div>
     </div>
     <div class="bg-black/90 border border-neutral-600 border-t-0 rounded-b-lg p-2">
-      <div class="text-xs text-neutral-400">{{ formatRelativeTime(canvas.created_at) }}</div>
+      <div class="text-xs text-neutral-400">{{ formatRelativeTime(canvas.last_artwork_at) }}</div>
       <div class="text-center m-2">
         <router-link
           :to="`/c/${canvas.id}`"

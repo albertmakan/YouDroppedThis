@@ -18,7 +18,6 @@
           <button @click="resetZoom" class="cursor-pointer hover:underline">Reset</button>
         </div>
         <div>🎨 Visible artworks: {{ visibleArtworks }}</div>
-        <div>⚡ Performance: {{ Math.floor(fps) }}fps</div>
         <div>🔌 Realtime: {{ realtimeSubscribeState }}</div>
       </div>
       <button
@@ -34,12 +33,10 @@
 
     <div v-if="authStore.isAuthenticated" class="fixed bottom-0 right-0 p-2 z-20">
       <button
-        v-if="
-          (!editorStore.isOpen || !editorRelativeLocation || editorLocationTaken) &&
-          editorStore.location
-        "
+        v-if="(!isEditorOpen || !editorRelativeLocation || editorLocationTaken) && editorLocation"
         @click="reopenEditor"
-        class="group relative size-16 hover:scale-110 rounded-md border-2 border-dashed border-neutral-400 cursor-pointer"
+        class="group relative size-16 hover:scale-110 rounded-md border-2 border-dashed cursor-pointer"
+        :style="{ borderColor: gridColor }"
       >
         <ArtworkThumbnail :offscreen-canvas="editorStore.offscreenCanvas" />
         <template v-if="editorLocationTaken">
@@ -51,6 +48,35 @@
           </div>
         </template>
       </button>
+    </div>
+
+    <div v-if="hasEnded" class="fixed top-10 left-0 w-full z-10 px-10">
+      <div class="backdrop-blur-xl bg-black/50 border border-secondary p-3 rounded-lg text-center">
+        <p class="text-neutral-300">This moment has ended</p>
+        <p class="text-sm text-neutral-400 my-3">No new drops can be placed here.</p>
+        <div
+          v-if="
+            canvasInfo?.canvas.created_by && canvasInfo.canvas.created_by === authStore.user?.id
+          "
+        >
+          <p v-if="!canvasInfo.canvas.reward_claimed_at">You can now claim the hosting reward.</p>
+          <HostRewardButton
+            :canvas-id="props.canvasId"
+            :claimed="!!canvasInfo.canvas.reward_claimed_at"
+          />
+        </div>
+      </div>
+    </div>
+    <div v-if="isError" class="fixed top-10 left-0 w-full z-10 px-10">
+      <div class="backdrop-blur-xl bg-black/50 border border-secondary p-3 rounded-lg text-center">
+        <p class="text-neutral-300">This moment isn’t here</p>
+        <p class="text-sm text-neutral-400 my-3">
+          The canvas you’re looking for has already ended, or it never existed in the first place.
+        </p>
+        <router-link to="/now" class="text-neutral-300 hover:underline">
+          Explore active moments
+        </router-link>
+      </div>
     </div>
 
     <canvas
@@ -87,7 +113,9 @@
           ({{ selectedLocation?.x }}, {{ selectedLocation?.y }})
         </div>
       </div>
+      <span v-if="hasEnded" class="size-1/2 inline-block" />
       <button
+        v-else
         @click="openEditorAtNewLocation"
         class="pointer-events-auto cursor-pointer size-1/2 hover:scale-105"
       >
@@ -107,18 +135,56 @@
       :top="locationPreview.y"
       :left="locationPreview.x"
       :size="zoomedArtSize"
+      :collect-disabled="canvasInfo?.recentActivity.some(({ kind }) => kind === 'collection')"
     />
     <PixelArtEditorPopup
-      v-if="canvasInfo && editorStore.isOpen && editorRelativeLocation && !editorLocationTaken"
-      @close="editorStore.isOpen = false"
-      @done="placeArtwork"
+      v-if="canvasInfo && isEditorOpen && editorRelativeLocation && !editorLocationTaken"
+      @close="isEditorOpen = false"
       :top="editorRelativeLocation.y"
       :left="editorRelativeLocation.x"
       :size="zoomedArtSize"
-      :canvasInfo
+      :canvasInfo="canvasInfo.canvas"
       :gridColor
       @wheel="handleWheel"
-    />
+    >
+      <template v-slot:header>
+        <div class="text-xs text-neutral-400">
+          <template
+            v-if="(lastHourPlacementsCount ?? 0) < canvasInfo.canvas.max_artworks_per_user_per_hour"
+          >
+            <p>
+              You can place up to {{ canvasInfo.canvas.max_artworks_per_user_per_hour }} pieces here
+              per hour
+            </p>
+            <p v-if="lastHourPlacementsCount">
+              {{ canvasInfo.canvas.max_artworks_per_user_per_hour - lastHourPlacementsCount }} left
+            </p>
+          </template>
+          <p v-else>You’ve placed enough for now. Try again in a little while.</p>
+        </div>
+      </template>
+      <template v-slot:drop>
+        <div class="text-xs text-neutral-400">
+          <p>Cost: {{ canvasInfo.canvas.placement_fee }} coins</p>
+          <p v-if="!authStore.user">Please sign in to place artwork</p>
+          <p v-else-if="!authStore.user.confirmed_at">
+            Please confirm your account to place artwork
+          </p>
+          <p v-else-if="!hasEnoughCoinsToPlace">You don’t have enough coins to drop this here</p>
+        </div>
+        <button
+          v-if="
+            hasEnoughCoinsToPlace &&
+            (lastHourPlacementsCount ?? 0) < canvasInfo.canvas.max_artworks_per_user_per_hour
+          "
+          @click="placeArtwork"
+          :disabled="editorStore.tool === 'code' || !editorStore.isFilledEnough || isPlacing"
+          class="border-current border disabled:text-neutral-600 disabled:cursor-not-allowed rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
+        >
+          {{ isPlacing ? 'Dropping...' : 'Drop' }}
+        </button>
+      </template>
+    </PixelArtEditorPopup>
   </div>
 </template>
 
@@ -126,16 +192,18 @@
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, toRef } from 'vue'
 import { useRouter } from 'vue-router'
 import type { AxiosError } from 'axios'
+import type { RealtimeChannel } from '@supabase/realtime-js'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import type { Artwork } from '@/shared/types'
-import { useCanvas } from '@/composables/useCanvases'
+import { useCanvas, useSyncCanvasState } from '@/composables/useCanvases'
 import { useCollectArtwork, usePlaceArtwork } from '@/composables/useUserArtworks'
 import { useToast } from '@/composables/useToast'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import { createOffscreenCanvas, renderParticles } from '@/components/Artwork/renderArtwork'
 import ArtworkInfoPopup from '@/components/Artwork/ArtworkInfoPopup.vue'
+import HostRewardButton from '@/components/User/HostRewardButton.vue'
 import DrawIcon from '@/assets/icons/draw.svg'
 import XMarkIcon from '@/assets/icons/xmark.svg'
 import { initializeDisintegrationParticles, updateEffect, updateParticles } from '@/utils/physics'
@@ -143,9 +211,14 @@ import f from '@/utils/builtInFunctions'
 import { colorToRGBA, rgbToHSL } from '@/utils/color'
 import { canvasApi } from '@/services/api'
 import { supabase } from '@/services/supabase'
-import type { RealtimeChannel } from '@supabase/realtime-js'
 
 const CHUNK_SIZE = 16
+const PLACEHOLDER_BOUNDS = {
+  min_x: -CHUNK_SIZE / 2,
+  max_x: CHUNK_SIZE / 2 - 1,
+  min_y: -CHUNK_SIZE / 2,
+  max_y: CHUNK_SIZE / 2 - 1,
+} as const
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 5
 const DEFAULT_BACKGROUND = '#18181b'
@@ -156,18 +229,20 @@ const props = defineProps<{
   y: number
   z?: number
   selected?: boolean
+  userId?: string
 }>()
-
-const canvasId = toRef(props, 'canvasId')
-const { data: canvasInfo, isError, error } = useCanvas(canvasId)
-const { mutate: mutatePlaceArtwork } = usePlaceArtwork(canvasId)
-const { mutate: mutateCollectArtwork } = useCollectArtwork(canvasId)
 
 const toast = useToast()
 
 const authStore = useAuthStore()
 const editorStore = useEditorStore()
 const router = useRouter()
+
+const canvasId = toRef(props, 'canvasId')
+const { data: canvasInfo, isError, error } = useCanvas(canvasId, toRef(props, 'userId'))
+const { mutate: mutatePlaceArtwork } = usePlaceArtwork(canvasId)
+const { mutate: mutateCollectArtwork } = useCollectArtwork(canvasId)
+const syncCanvasState = useSyncCanvasState(canvasId)
 
 // Canvas refs and state
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -187,6 +262,24 @@ const dragStart = ref({ x: 0, y: 0 })
 const initialPinchDistance = ref<number | null>(null)
 const showInfo = ref(false)
 const editorLocationTaken = ref(false)
+const isEditorOpen = ref(false)
+const isPlacing = ref(false)
+const editorLocation = ref<{ x: number; y: number } | null>(null)
+
+const now = ref(new Date().toISOString())
+const hasEnded = computed(() => canvasInfo.value?.canvas.accepting_artworks === false)
+const lastHourPlacementsCount = computed(() => {
+  const oneHourAgo = new Date(Date.parse(now.value) - 3_600_000).toISOString()
+  const lastHourCount = canvasInfo.value?.recentActivity.reduce(
+    (count, { event_time, kind }) =>
+      kind === 'placement' && event_time > oneHourAgo ? count + 1 : count,
+    0,
+  )
+  return lastHourCount
+})
+const hasEnoughCoinsToPlace = computed(
+  () => (authStore.user?.balance ?? 0) > (canvasInfo.value?.canvas.placement_fee ?? 0),
+)
 
 const viewBounds = computed(() => ({
   x1: Math.floor(viewX.value / zoomedArtSize.value),
@@ -194,11 +287,7 @@ const viewBounds = computed(() => ({
   y1: Math.floor(viewY.value / zoomedArtSize.value),
   y2: Math.floor((viewY.value + viewportHeight.value) / zoomedArtSize.value),
 }))
-
-const canvasBounds = computed(() => {
-  const { min_x = -8, max_x = 7, min_y = -8, max_y = 7 } = canvasInfo.value ?? {}
-  return { min_x, max_x, min_y, max_y }
-})
+const canvasBounds = computed(() => canvasInfo.value?.canvas ?? PLACEHOLDER_BOUNDS)
 
 const chunks = new Map<string, { artworks?: Artwork[]; isLoading: boolean }>()
 const subscription = ref<RealtimeChannel | null>(null)
@@ -223,16 +312,18 @@ function handleRealtimeEvent(event: string, payload: any) {
   if (event === 'placed') {
     const artwork = payload as Artwork
     getChunkByCoords(artwork.x, artwork.y)?.artworks?.push(artwork)
-    if (editorStore.location?.x === artwork.x && editorStore.location.y === artwork.y) {
+    if (editorLocation.value?.x === artwork.x && editorLocation.value.y === artwork.y) {
       editorLocationTaken.value = true
     }
+    syncCanvasState({ last_artwork_at: artwork.created_at })
   } else if (event === 'collected') {
-    const { x, y, id, collected_at, collected_by } = payload as Artwork
+    const { x, y, id, collected_at, collected_by, collector } = payload as Artwork
     const collected = getChunkByCoords(x, y)?.artworks?.find((a) => a.id === id)
     if (collected) {
       collected.collected_by = collected_by
       collected.collected_at = collected_at
       collected.collectionEffect = { progress: 0 }
+      collected.collector = collector
     }
   }
 }
@@ -267,10 +358,10 @@ const locationPreview = computed(
 )
 const editorRelativeLocation = computed(
   () =>
-    editorStore.location &&
-    (isOutsideViewport(editorStore.location.x, editorStore.location.y)
+    editorLocation.value &&
+    (isOutsideViewport(editorLocation.value.x, editorLocation.value.y)
       ? null
-      : getArtworkRelativeCoordinates(editorStore.location)),
+      : getArtworkRelativeCoordinates(editorLocation.value)),
 )
 
 const chunksRange = computed(() => {
@@ -313,7 +404,7 @@ const chunksRange = computed(() => {
 })
 
 const gridColor = computed(() => {
-  const [r, g, b] = colorToRGBA(canvasInfo.value?.background_color || DEFAULT_BACKGROUND)
+  const [r, g, b] = colorToRGBA(canvasInfo.value?.canvas.background_color || DEFAULT_BACKGROUND)
   const [h, s, l] = rgbToHSL(r, g, b)
   return `hsl(${h}, ${s}%, ${l + (l > 50 ? -50 : 50)}%)`
 })
@@ -351,11 +442,11 @@ function isOutsideViewport(x: number, y: number) {
 }
 
 function reopenEditor() {
-  if (!editorStore.location) {
+  if (!editorLocation.value) {
     return
   }
-  editorStore.isOpen = true
-  const { x, y } = editorStore.location
+  isEditorOpen.value = true
+  const { x, y } = editorLocation.value
   if (isOutsideViewport(x, y)) {
     setLocation(x, y)
     updateQueryParams()
@@ -364,34 +455,34 @@ function reopenEditor() {
 
 function openEditorAtNewLocation() {
   if (!selectedLocation.value || selectedLocation.value.artwork) return
-  editorStore.location = selectedLocation.value
+  editorLocation.value = selectedLocation.value
   editorLocationTaken.value = false
-  editorStore.isOpen = true
+  isEditorOpen.value = true
   selectedLocation.value = null
 }
 
 async function placeArtwork() {
-  if (!editorStore.location) {
+  if (!editorLocation.value) {
     return
   }
   if (!authStore.user) {
-    toast.warning('Please log in to place artwork')
+    toast.warning('Please sign in to place artwork')
     return
   } else if (!authStore.user.confirmed_at) {
     toast.warning('Please confirm your account to place artwork')
     return
   }
-  editorStore.isPlacing = true
+  isPlacing.value = true
   mutatePlaceArtwork(
     {
       pixelData: editorStore.getPixelData(),
-      ...editorStore.location,
+      ...editorLocation.value,
     },
     {
       onSuccess: (response) => {
-        editorStore.isOpen = false
-        editorStore.location = null
-        editorStore.isPlacing = false
+        isEditorOpen.value = false
+        editorLocation.value = null
+        isPlacing.value = false
         editorStore.clearCanvas()
         authStore.setProfileInfo(response.userProfile)
       },
@@ -400,7 +491,7 @@ async function placeArtwork() {
           'Failed to place artwork: ' +
             JSON.stringify((error as AxiosError).response?.data, null, 4),
         )
-        editorStore.isPlacing = false
+        isPlacing.value = false
       },
     },
   )
@@ -411,7 +502,7 @@ async function collectArtwork() {
     return
   }
   if (!authStore.user) {
-    toast.warning('Please log in to collect artwork')
+    toast.warning('Please sign in to collect artwork')
     return
   } else if (!authStore.user.confirmed_at) {
     toast.warning('Please confirm your account to collect artwork')
@@ -454,7 +545,7 @@ function renderCanvas() {
   const context = ctx.value
 
   // Clear canvas
-  context.fillStyle = canvasInfo.value?.background_color || DEFAULT_BACKGROUND
+  context.fillStyle = canvasInfo.value?.canvas.background_color || DEFAULT_BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   // Draw grid
@@ -484,9 +575,8 @@ function renderCanvas() {
     yi += 1
   }
 
-  let now = ''
   if (renderCount % 100 === 0) {
-    now = new Date().toISOString()
+    now.value = new Date().toISOString()
   }
   // Draw artworks
   visibleArtworks = 0
@@ -502,7 +592,7 @@ function renderCanvas() {
         context.fillRect(x, y, zoomedChunkSize.value, zoomedChunkSize.value)
       } else {
         chunk?.artworks?.forEach((artwork) => {
-          visibleArtworks += drawArtwork(artwork, context, now)
+          visibleArtworks += drawArtwork(artwork, context, now.value)
         })
       }
     }
@@ -677,17 +767,8 @@ function handleTouchEnd(e: TouchEvent) {
 
 // Animation loop
 let animationFrame: number
-let lastFrameTime: number | undefined = undefined
-let fps = 1
 
-function animate(timestamp?: number) {
-  if (!lastFrameTime || !timestamp) {
-    lastFrameTime = timestamp
-  } else {
-    const dt = (timestamp - lastFrameTime) / 1000
-    lastFrameTime = timestamp
-    fps = 1 / dt
-  }
+function animate() {
   renderCanvas()
   animationFrame = requestAnimationFrame(animate)
 }
@@ -719,8 +800,8 @@ watch(
     chunks.clear()
     subscribeToCanvas(props.canvasId)
     selectedLocation.value = null
-    editorStore.isOpen = false
-    editorStore.location = null
+    isEditorOpen.value = false
+    editorLocation.value = null
     editorLocationTaken.value = false
   },
   { immediate: true },

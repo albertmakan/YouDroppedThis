@@ -1,6 +1,7 @@
+import { type Ref } from 'vue'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
-import { canvasApi, type CanvasHostingRequest } from '@/services/api'
-import { unref, type MaybeRef, type Ref } from 'vue'
+import { canvasApi } from '@/services/api'
+import type { CanvasInfo } from '@/shared/types'
 
 export const ITEMS_PER_PAGE = 16
 
@@ -27,22 +28,50 @@ export function useNowActiveCanvases() {
 export function useCreateCanvas() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (hosting: CanvasHostingRequest) => canvasApi.createCanvas(hosting),
-    onSuccess: ({ userProfile }) => {
-      queryClient.invalidateQueries({ queryKey: ['canvases', 'user', userProfile.id] })
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    mutationFn: canvasApi.createCanvas,
+    onSuccess: ({ userProfile, canvas }) => {
+      queryClient.resetQueries({ queryKey: ['canvases', 'user', userProfile.id] })
+      queryClient.resetQueries({ queryKey: ['transactions'] })
       queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
     },
   })
 }
 
-export function useCanvas(canvasId: MaybeRef<number | undefined>) {
+export function useCanvas(canvasId: Ref<number | undefined>, userId?: Ref<string | undefined>) {
   return useQuery({
-    queryKey: ['canvas', canvasId],
+    queryKey: ['canvas', canvasId, userId],
     queryFn: () => {
-      const id = unref(canvasId)
+      const id = canvasId.value
       if (id) return canvasApi.getCanvasInfo(id)
     },
-    enabled: !!unref(canvasId),
+    enabled: !!canvasId.value,
   })
+}
+
+export function useClaimHostReward(canvasId: Ref<number>) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => canvasApi.claimHostReward(canvasId.value),
+    onSuccess: ({ userProfile, canvas }) => {
+      queryClient.setQueryData(
+        ['canvas', canvasId, userProfile.id],
+        (data?: { canvas: CanvasInfo }) => ({
+          ...data,
+          canvas: { ...data?.canvas, ...canvas },
+        }),
+      )
+      queryClient.resetQueries({ queryKey: ['transactions'] })
+      queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
+    },
+  })
+}
+
+export function useSyncCanvasState(canvasId: Ref<number>, userId?: Ref<string | undefined>) {
+  const queryClient = useQueryClient()
+  return (canvasInfo: Partial<CanvasInfo>) => {
+    queryClient.setQueryData(['canvas', canvasId, userId], (data?: { canvas: CanvasInfo }) => ({
+      ...data,
+      canvas: { ...data?.canvas, ...canvasInfo },
+    }))
+  }
 }

@@ -1,5 +1,12 @@
 import axios from 'axios'
-import type { Profile, Artwork, CanvasInfo, Transaction, PixelData } from '@/shared/types'
+import type {
+  Profile,
+  Artwork,
+  CanvasInfo,
+  Transaction,
+  PixelData,
+  RecentActivity,
+} from '@/shared/types'
 import { supabase } from './supabase'
 
 const api = axios.create({
@@ -70,7 +77,7 @@ export const canvasApi = {
 
   async getCanvasInfo(id: number) {
     const response = await api.get(`/canvases/${id}/info`)
-    return response.data as CanvasInfo
+    return response.data as { canvas: CanvasInfo; recentActivity: RecentActivity }
   },
 
   async getArtworksInArea(
@@ -79,6 +86,11 @@ export const canvasApi = {
   ) {
     const response = await api.get(`/canvases/${id}/area`, { params: bounds })
     return response.data as { artworks: Artwork[] }
+  },
+
+  async claimHostReward(canvasId: number) {
+    const response = await api.post(`/canvases/${canvasId}/reward`)
+    return response.data as { canvas: CanvasInfo; userProfile: Profile; reward: number }
   },
 }
 

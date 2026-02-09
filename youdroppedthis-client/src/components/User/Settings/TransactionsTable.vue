@@ -22,19 +22,14 @@
           >
             <td class="py-3 px-4 text-sm">{{ formatDate(transaction.created_at) }}</td>
             <td class="py-3 px-4">
-              <span
-                :class="[
-                  'inline-block px-2 py-1 rounded text-xs font-medium',
-                  tagColors[transaction.type],
-                ]"
-              >
-                {{ transaction.type }}
+              <span class="">
+                {{ typeLabels[transaction.type] }}
               </span>
             </td>
             <td
               :class="[
                 'py-3 px-4 text-sm text-right font-medium',
-                transaction.amount > 0 ? 'text-green-400' : 'text-red-400',
+                transaction.amount > 0 ? 'text-primary' : 'text-secondary',
               ]"
             >
               {{ transaction.amount > 0 ? '+' : '' }}{{ transaction.amount }}
@@ -71,13 +66,13 @@
 import { useUserTransactions } from '@/composables/useUserTransactions'
 import { toRef } from 'vue'
 
-const tagColors = {
-  drop_fee: 'bg-red-950 text-red-200',
-  collection_reward: '',
-  daily_grant: 'bg-green-950 text-green-200',
-  host_reward: '',
-  canvas_creation: 'bg-red-950 text-red-200',
-  purchase: 'bg-green-950 text-green-200',
+const typeLabels = {
+  drop_fee: 'Drop fee',
+  collection_reward: 'Collection reward',
+  daily_grant: 'Daily grant',
+  host_reward: 'Host reward',
+  canvas_creation: 'Canvas creation',
+  purchase: 'Purchase',
 } as const
 
 const props = defineProps<{ userId: string }>()

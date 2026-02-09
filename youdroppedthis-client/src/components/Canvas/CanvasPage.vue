@@ -1,16 +1,16 @@
 <template>
-  <div
-    class="fixed flex items-center top-0 left-0 rounded-br-md backdrop-blur-xl text-primary bg-black/50 z-10 font-bold"
-  >
-    <button @click="drawerRef?.openDrawer" class="p-2 cursor-pointer hover:bg-neutral-800">
+  <div class="fixed top-0 left-0 z-10">
+    <button
+      @click="drawerRef?.openDrawer"
+      class="p-2 cursor-pointer rounded-br-md hover:bg-neutral-800 backdrop-blur-xl bg-black/50"
+    >
       <div class="size-5"><MenuIcon /></div>
     </button>
-    <router-link to="/" class="px-2"> YouDroppedThis </router-link>
   </div>
   <div class="fixed top-0 right-0 p-2 z-20">
     <ProfileButton />
   </div>
-  <CanvasView v-bind="props" />
+  <CanvasView v-bind="props" :user-id="authStore.user?.id" />
   <Drawer ref="drawer" :canvas-id="props.canvasId" />
 </template>
 
@@ -21,13 +21,22 @@ import MenuIcon from '@/assets/icons/menu.svg'
 import ProfileButton from '@/components/User/ProfileButton.vue'
 import Drawer from '@/components/Layout/Drawer.vue'
 import CanvasView from './CanvasView.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const drawerRef = useTemplateRef<InstanceType<typeof Drawer>>('drawer')
 
 const route = useRoute()
 
-const props = ref<{ canvasId: number; x: number; y: number; z?: number; selected?: boolean }>({
-  canvasId: 1,
+const authStore = useAuthStore()
+
+const props = ref<{
+  canvasId: number
+  x: number
+  y: number
+  z?: number
+  selected?: boolean
+}>({
+  canvasId: 0,
   x: 0,
   y: 0,
 })

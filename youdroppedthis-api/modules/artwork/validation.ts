@@ -36,16 +36,14 @@ export const placementSchema = z.object({
         )
         .refine(
           (mat) => {
-            // Validate dimensions are exactly 8, 16, 32, or 64
-            const validSizes = [8, 16, 32, 64];
+            // Validate dimensions are exactly 8, 16, or 32
+            const validSizes = [8, 16, 32];
             const height = mat.length;
             const width = mat[0]?.length || 0;
-
             return validSizes.includes(height) && validSizes.includes(width);
           },
           {
-            message:
-              "Matrix dimensions must be exactly 8x8, 16x16, 32x32, or 64x64",
+            message: "Matrix dimensions must be exactly 8x8, 16x16, or 32x32",
           }
         ),
     })
@@ -53,7 +51,6 @@ export const placementSchema = z.object({
       (data) => {
         // Cross-validate: ensure matrix indices don't exceed palette length
         const maxIndex = data.palette.length - 1;
-
         for (let y = 0; y < data.mat.length; y++) {
           for (let x = 0; x < data.mat[y].length; x++) {
             const value = data.mat[y][x];
@@ -62,7 +59,6 @@ export const placementSchema = z.object({
             }
           }
         }
-
         return true;
       },
       (data) => ({

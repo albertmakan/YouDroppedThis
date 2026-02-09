@@ -1,5 +1,5 @@
 export type Transaction = {
-  id: number;
+  id: bigint;
   user_id: string;
   amount: number;
   type:
@@ -10,6 +10,6 @@ export type Transaction = {
     | "canvas_creation"
     | "purchase";
   created_at: string;
-  artwork_id?: number;
-  canvas_id?: number;
+  artwork_id?: bigint;
+  canvas_id?: bigint;
 };

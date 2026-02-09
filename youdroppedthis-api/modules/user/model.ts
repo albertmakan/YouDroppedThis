@@ -10,4 +10,6 @@ export type Profile = {
   artworks_collected_count?: number;
   created_at: string;
   updated_at?: string;
+  last_placed_at?: string;
+  last_collected_at?: string;
 };

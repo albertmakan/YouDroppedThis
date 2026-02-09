@@ -40,13 +40,7 @@ if (allowOrigin) {
 }
 app.use(
   oakCors({
-    origin: (requestOrigin) =>
-      allowedOrigins.some((allowed) => {
-        if (typeof allowed === "string") {
-          return requestOrigin === allowed;
-        }
-        return allowed.test(requestOrigin ?? "");
-      }),
+    origin: allowedOrigins,
     credentials: true,
   })
 );

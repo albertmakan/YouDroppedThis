@@ -20,31 +20,20 @@ export class TransactionService {
     return result.rows;
   }
 
-  static async updateBalance(
-    userId: string,
-    amount: number,
-    type: Transaction["type"]
+  static async recordTransaction(
+    transaction: Omit<Transaction, "id" | "created_at">
   ) {
+    const {
+      user_id,
+      type,
+      amount,
+      artwork_id = null,
+      canvas_id = null,
+    } = transaction;
     const db = getDB();
-
-    // Record transaction, trigger will update balance
-    await db.queryArray`
-      INSERT INTO app.transactions (user_id, type, amount)
-      VALUES (${userId}, ${type}, ${amount})`;
-
-    // Get updated balance
-    const balanceResult = await db.queryObject<{ balance: number }>`
-      SELECT balance
-      FROM app.profiles
-      WHERE id = ${userId}`;
-
-    return {
-      success: true,
-      message: `Amount of ${amount} coins claimed!`,
-      claimedAt: new Date().toISOString(),
-      newBalance: balanceResult.rows[0].balance,
-      userId,
-    };
+    return await db.queryArray`
+      INSERT INTO app.transactions (user_id, type, amount, artwork_id, canvas_id)
+      VALUES (${user_id}, ${type}, ${amount}, ${artwork_id}, ${canvas_id})`;
   }
 
   static async claimDailyBonus(userId: string) {
@@ -68,6 +57,38 @@ export class TransactionService {
     }
 
     // Award daily bonus
-    return await this.updateBalance(userId, DAILY_BONUS, "daily_grant");
+    await this.recordTransaction({
+      user_id: userId,
+      type: "daily_grant",
+      amount: DAILY_BONUS,
+    });
+
+    // Get updated balance
+    const balanceResult = await db.queryObject<{ balance: number }>`
+      SELECT balance
+      FROM app.profiles
+      WHERE id = ${userId}`;
+
+    return {
+      success: true,
+      message: `Amount of ${DAILY_BONUS} coins claimed!`,
+      claimedAt: new Date().toISOString(),
+      newBalance: balanceResult.rows[0].balance,
+      userId,
+    };
+  }
+
+  static async getCanvasCreationFee(canvasId: bigint, hostId: string) {
+    const db = getDB();
+
+    const result = await db.queryObject<{ amount: number }>`
+      SELECT (0-amount) as amount
+      FROM app.transactions
+      WHERE type = 'canvas_creation'
+        AND canvas_id = ${canvasId}
+        AND user_id = ${hostId}
+      LIMIT 1`;
+
+    return result.rows[0];
   }
 }

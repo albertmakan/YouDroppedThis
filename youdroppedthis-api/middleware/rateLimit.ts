@@ -68,5 +68,5 @@ export async function rateLimitMiddleware(
     String(Math.ceil((data.windowStart + windowMs) / 1000))
   );
 
-  return next();
+  await next();
 }

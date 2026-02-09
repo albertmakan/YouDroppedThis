@@ -6,16 +6,21 @@
   >
     {{ profile.username?.charAt(0) }}
   </div>
-  <div v-else class="bg-neutral-700 animate-pulse rounded-full size-6" />
+  <div
+    v-else
+    class="bg-neutral-700 animate-pulse rounded-full size-[1.4em] aspect-square text-transparent"
+  >
+    .
+  </div>
 </template>
 
 <script setup lang="ts">
-import type { Profile } from '@/shared/types'
+import type { MinimalProfileData } from '@/shared/types'
 import { colorToRGBA, rgbToHSL } from '@/utils/color'
 import { computed, type DeepReadonly } from 'vue'
 
 const { profile } = defineProps<{
-  profile?: DeepReadonly<Pick<Profile, 'username' | 'profile_picture'>>
+  profile?: DeepReadonly<MinimalProfileData>
 }>()
 
 const background = computed(() => profile?.profile_picture?.palette[0])

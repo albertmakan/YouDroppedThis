@@ -1,5 +1,5 @@
 export type Canvas = {
-  id: number;
+  id: bigint;
   created_at: string;
   name: string;
   accepting_artworks: boolean;
@@ -16,8 +16,13 @@ export type Canvas = {
   palette?: string[];
   first_artwork_at?: string;
   last_artwork_at?: string;
+  end_at: string;
   created_by?: string;
   artwork_resolution: number;
+  reward_claimed_at?: string;
+  total_artworks_placed: bigint;
+  total_artworks_collected: bigint;
+  active_artworks_count: bigint;
 };
 
 export type CanvasHostingRequest = {

@@ -45,7 +45,10 @@
         >
           <div class="m-auto mt-8 w-4/5" @click.stop>
             <div class="border border-neutral-600 rounded-t-lg bg-black p-2 flex justify-between">
-              <ProfileCard :user-id="selectedArtwork.created_by" />
+              <span class="inline-flex gap-[0.5em] items-center">
+                <ProfilePicture :profile="selectedCreator" />
+                <span>{{ selectedCreator?.username }}</span>
+              </span>
               <router-link
                 class="size-6 cursor-pointer shrink-0"
                 :to="`/c/${selectedArtwork.canvas_id}?x=${selectedArtwork.x}&y=${selectedArtwork.y}&selected`"
@@ -53,7 +56,7 @@
                 <LocationIcon />
               </router-link>
             </div>
-            <div class="bg-zinc-900" :style="{ backgroundColor: selectedArtwork.pixel_data.bg }">
+            <div class="bg-zinc-900" :style="{ backgroundColor: selectedArtwork.background_color }">
               <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
             </div>
             <div
@@ -63,7 +66,10 @@
               <template v-if="selectedArtwork.collected_by">
                 by
                 <span v-if="selectedArtwork.collected_by === authStore.user?.id">You</span>
-                <ProfileCard v-else :user-id="selectedArtwork.collected_by" />
+                <span v-else class="inline-flex gap-[0.5em] items-center">
+                  <ProfilePicture :profile="selectedArtwork.collector" />
+                  <span>{{ selectedArtwork.collector?.username }}</span>
+                </span>
               </template>
             </div>
           </div>
@@ -124,7 +130,7 @@
                 'aspect-square overflow-hidden cursor-pointer sm:w-32 bg-zinc-900',
                 artwork.is_expired ? 'opacity-40' : '',
               ]"
-              :style="{ backgroundColor: artwork.pixel_data.bg }"
+              :style="{ backgroundColor: artwork.background_color }"
               tabindex="0"
               @click="selectedArtwork = artwork"
             >
@@ -153,7 +159,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, toRef } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import type { Artwork } from '@/shared/types'
 import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfiles'
@@ -165,7 +171,6 @@ import CollectIcon from '@/assets/icons/collect.svg'
 import LocationIcon from '@/assets/icons/location.svg'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import ProfilePicture from './ProfilePicture.vue'
-import ProfileCard from './ProfileCard.vue'
 
 const props = defineProps<{ userId: string }>()
 
@@ -177,8 +182,14 @@ const authStore = useAuthStore()
 
 const tabs = ['placed', 'collected'] as const
 const activeTab = ref<'placed' | 'collected'>('placed')
-const selectedArtwork = ref<Artwork | null>(null)
 const profileInfoOpen = ref(false)
+
+const selectedArtwork = ref<Artwork | null>(null)
+const selectedCreator = computed(() =>
+  selectedArtwork.value?.created_by === authStore.user?.id
+    ? (authStore.user ?? undefined)
+    : selectedArtwork.value?.creator,
+)
 
 async function setActiveTab(tab: 'placed' | 'collected') {
   selectedArtwork.value = null

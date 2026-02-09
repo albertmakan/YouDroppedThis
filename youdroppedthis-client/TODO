@@ -47,14 +47,30 @@
 - landing page (refactor)
 - calc grid color
 - save draft by canvas
-- optimize chunk offset(
-  - start 0: 4, 4, 16
-  - start 8: 1, 9, 9
-  - dynamic: 1, 4, 9)
-- migrate db changes
-
+- optimize chunk offset
+- on placement, check bounds, resolution, is own
+- fix possible race condition when collecting or claiming reward
+- join profiles on artworks an canvases
+- collection and host rewards
+  - claim reward endpoint
+  - determine collection reward
+- moment ending (calc from last_palcement_time + expiration_time)
 - now active page (query)
-- collection and host (claim on open?) rewards, transaction realtime?
+  - return total_count
+  - index on last_placement_time
+  - set first_placement_time
 - moment rate limit
+  - artwork 2 more indexes
+  - fetch canvas with my recent activity info
+  - collection cooldown var
+- claim host reward button
+- not found canvas
+- update canvas server state
+- disable editor based on rate limit
+- collection rate limits display
+- Now page loading and empty state
+
+- migrate db changes
+- logo
+- SEO
 - email template
-- improve UI copy, logo

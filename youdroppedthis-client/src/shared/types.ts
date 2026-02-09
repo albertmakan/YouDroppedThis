@@ -3,7 +3,6 @@ import type { Effect, Particle } from '@/utils/physics'
 export type PixelData = {
   palette: string[]
   mat: number[][]
-  bg?: string
 }
 
 export type Profile = {
@@ -17,7 +16,11 @@ export type Profile = {
   artworks_collected_count?: number
   created_at: string
   updated_at?: string
+  last_placed_at?: string
+  last_collected_at?: string
 }
+
+export type MinimalProfileData = Pick<Profile, 'username' | 'profile_picture'>
 
 export type Artwork = {
   id: number
@@ -32,6 +35,11 @@ export type Artwork = {
   collected_by?: string
   expires_at: string
   is_expired?: boolean
+
+  background_color?: string
+  canvas_name?: string
+  creator?: MinimalProfileData
+  collector?: MinimalProfileData
 
   particles?: Particle[]
   collectionEffect?: Effect
@@ -56,9 +64,21 @@ export type CanvasInfo = {
   palette?: string[]
   first_artwork_at?: string
   last_artwork_at?: string
+  end_at: string
+  reward_claimed_at?: string
   created_by?: string
+  host?: MinimalProfileData
   artwork_resolution: number
+  total_artworks_placed: number
+  total_artworks_collected: number
+  active_artworks_count: number
 }
+
+export type RecentActivity = {
+  artwork_id: number
+  event_time: string
+  kind: 'placement' | 'collection'
+}[]
 
 export type Transaction = {
   id: number

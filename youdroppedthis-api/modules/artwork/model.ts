@@ -1,14 +1,13 @@
 export type PixelData = {
   palette: string[];
   mat: number[][];
-  bg?: string;
 };
 
 export type Artwork = {
-  id: number;
+  id: bigint;
   pixel_data: PixelData;
   created_by: string;
-  canvas_id: number;
+  canvas_id: bigint;
   x: number;
   y: number;
   created_at: string;

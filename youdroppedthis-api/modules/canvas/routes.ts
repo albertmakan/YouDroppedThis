@@ -1,5 +1,8 @@
 import { Router } from "../../deps.ts";
-import { authMiddleware } from "../../middleware/auth.ts";
+import {
+  authMiddleware,
+  optionalAuthMiddleware,
+} from "../../middleware/auth.ts";
 import { CanvasService } from "./service.ts";
 import { canvasHostingRequestSchema } from "./validation.ts";
 
@@ -24,7 +27,7 @@ canvasRouter.get("/hosted-by/:userId", async (ctx) => {
 
 canvasRouter.get("/now", async (ctx) => {
   try {
-    const canvases = await CanvasService.getNowActiveCanvases();
+    const canvases = await CanvasService.getNowActiveCanvases(5);
     ctx.response.body = { canvases };
   } catch {
     ctx.response.status = 500;
@@ -46,7 +49,7 @@ canvasRouter.post("/", authMiddleware, async (ctx) => {
       await CanvasService.createCanvas(userId, hostingRequest.data);
     if (error) {
       ctx.response.status = code;
-      ctx.response.body = { error };
+      ctx.response.body = { message: error };
       return;
     }
     ctx.response.body = { canvas, userProfile };
@@ -56,21 +59,25 @@ canvasRouter.post("/", authMiddleware, async (ctx) => {
   }
 });
 
-canvasRouter.get("/:id/info", async (ctx) => {
-  const canvasId = parseInt(ctx.params.id);
+canvasRouter.get("/:id/info", optionalAuthMiddleware, async (ctx) => {
+  const userId = ctx.state.user?.id;
+  const canvasId = BigInt(ctx.params.id);
   if (!canvasId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid id" };
     return;
   }
   try {
-    const canvasInfo = await CanvasService.getCanvasInfo(canvasId);
-    if (!canvasInfo) {
+    const canvas = await CanvasService.getCanvasInfo(canvasId);
+    if (!canvas) {
       ctx.response.status = 404;
       ctx.response.body = { error: "Canvas not found" };
       return;
     }
-    ctx.response.body = canvasInfo;
+    const recentActivity = userId
+      ? await CanvasService.getRecentActivity(canvasId, userId, 24)
+      : [];
+    ctx.response.body = { canvas, recentActivity };
   } catch {
     ctx.response.status = 500;
     ctx.response.body = { error: "Failed to get canvas state" };
@@ -78,7 +85,7 @@ canvasRouter.get("/:id/info", async (ctx) => {
 });
 
 canvasRouter.get("/:id/area", async (ctx) => {
-  const canvasId = parseInt(ctx.params.id);
+  const canvasId = BigInt(ctx.params.id);
   if (!canvasId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid id" };
@@ -115,5 +122,30 @@ canvasRouter.get("/:id/area", async (ctx) => {
   } catch {
     ctx.response.status = 500;
     ctx.response.body = { error: "Failed to get artworks" };
+  }
+});
+
+canvasRouter.post("/:id/reward", authMiddleware, async (ctx) => {
+  const userId = ctx.state.user.id;
+  const canvasId = BigInt(ctx.params.id);
+  if (!canvasId) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Invalid id" };
+    return;
+  }
+  try {
+    const { error, code, ...result } = await CanvasService.claimHostReward(
+      canvasId,
+      userId
+    );
+    if (error) {
+      ctx.response.status = code;
+      ctx.response.body = { error };
+      return;
+    }
+    ctx.response.body = result;
+  } catch (error) {
+    ctx.response.status = 500;
+    ctx.response.body = { error };
   }
 });

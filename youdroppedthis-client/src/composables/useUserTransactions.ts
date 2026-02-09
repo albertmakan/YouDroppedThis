@@ -24,11 +24,13 @@ export function useClaimDailyBonus() {
   return useMutation({
     mutationFn: () => transactionApi.claimDailyBonus(),
     onSuccess: (result) => {
-      if (result.success && result.newBalance)
+      if (result.success && result.newBalance) {
+        queryClient.resetQueries({ queryKey: ['transactions'] })
         queryClient.setQueryData(['profile', result.userId], (profile: Profile) => ({
           ...profile,
           balance: result.newBalance,
         }))
+      }
     },
   })
 }

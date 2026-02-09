@@ -3,17 +3,17 @@
     class="fixed left-0 top-0 h-screen w-60 bg-black text-neutral-300 shadow-lg z-40 transform transition-transform duration-300 border-neutral-600 border-r"
     :class="isOpen ? 'translate-x-0' : '-translate-x-full'"
   >
-    <div class="flex items-center text-primary z-10 font-bold">
+    <div class="flex items-center z-10 font-bold">
       <button @click="isOpen = false" class="p-2 cursor-pointer hover:bg-neutral-800">
         <div class="size-5"><MenuIcon /></div>
       </button>
-      <router-link to="/now" class="px-2">YouDroppedThis</router-link>
+      <router-link to="/now" class="px-2 text-primary">YouDroppedThis</router-link>
     </div>
     <div class="overflow-y-auto overflow-x-hidden h-[calc(100vh-40px)]">
       <nav class="p-4 space-y-2">
         <div v-if="canvasInfo" class="rounded-md bg-neutral-900">
-          <h3 class="text-sm font-semibold text-amber-500 tracking-wide px-3 pt-2 mb-2">
-            {{ canvasInfo?.name }}
+          <h3 class="text-sm font-semibold text-neutral-200 tracking-wide px-3 pt-2 mb-2">
+            {{ canvasInfo.canvas?.name }}
           </h3>
           <button
             @click="showInfo = true"
@@ -29,12 +29,6 @@
             <span class="size-5"><LocationIcon /></span>
             Center view
           </button>
-        </div>
-        <div v-else-if="isError" class="rounded-md bg-code-error/20">
-          <h3 class="text-sm font-semibold text-code-error tracking-wide px-3 py-2">
-            Error getting canvas /{{ canvasId }}:
-            {{ Object.values((canvasError as AxiosError)?.response?.data as any).join() }}
-          </h3>
         </div>
         <div class="mt-6">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
@@ -76,7 +70,7 @@
             Host a moment
           </router-link>
         </div>
-        <div class="mt-6">
+        <div class="mt-6 space-y-1">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Hosted
           </h3>
@@ -95,12 +89,16 @@
   <SelectLocationPopup
     v-if="isLocationPopupOpen"
     @close="isLocationPopupOpen = false"
-    :min-x="canvasInfo?.min_x"
-    :max-x="canvasInfo?.max_x"
-    :min-y="canvasInfo?.min_y"
-    :max-y="canvasInfo?.max_y"
+    :min-x="canvasInfo?.canvas.min_x"
+    :max-x="canvasInfo?.canvas.max_x"
+    :min-y="canvasInfo?.canvas.min_y"
+    :max-y="canvasInfo?.canvas.max_y"
   />
-  <CanvasInfoPopup v-if="showInfo && canvasInfo" @close="showInfo = false" :canvas="canvasInfo" />
+  <CanvasInfoPopup
+    v-if="showInfo && canvasInfo"
+    @close="showInfo = false"
+    :canvas="canvasInfo.canvas"
+  />
   <UserCollection
     v-if="showCollection && authStore.user"
     @close="showCollection = false"
@@ -110,7 +108,6 @@
 
 <script setup lang="ts">
 import { ref, toRef, watch } from 'vue'
-import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useCanvas } from '@/composables/useCanvases'
 import MenuIcon from '@/assets/icons/menu.svg'
@@ -122,12 +119,12 @@ import SelectLocationPopup from '@/components/Canvas/SelectLocationPopup.vue'
 import CanvasInfoPopup from '@/components/Canvas/CanvasInfoPopup.vue'
 import DailyBonus from '@/components/User/DailyBonusButton.vue'
 import UserCollection from '@/components/User/UserCollection.vue'
-import CanvasesList from '../User/CanvasesList.vue'
+import CanvasesList from '@/components/User/CanvasesList.vue'
 
 const props = defineProps<{ canvasId?: number }>()
 
 const authStore = useAuthStore()
-const { data: canvasInfo, isError, error: canvasError } = useCanvas(toRef(props, 'canvasId'))
+const { data: canvasInfo } = useCanvas(toRef(props, 'canvasId'))
 
 const isOpen = ref(false)
 const showInfo = ref(false)

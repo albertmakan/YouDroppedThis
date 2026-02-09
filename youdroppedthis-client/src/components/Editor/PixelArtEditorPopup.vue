@@ -5,7 +5,7 @@
   >
     <div class="relative min-w-full">
       <div
-        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600 text-center"
+        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600 text-center space-y-3"
         :class="{
           'bottom-0 left-1/2 -translate-x-1/2': editorLayout === 'v',
           'right-full top-0': editorLayout === 'h',
@@ -22,8 +22,9 @@
             <XMarkIcon />
           </button>
         </div>
+        <slot name="header" />
         <div
-          class="flex justify-center gap-2 mt-4 *:pointer-events-auto *:size-8 *:p-1 *:rounded-md *:cursor-pointer"
+          class="flex justify-center gap-2 *:pointer-events-auto *:size-8 *:p-1 *:rounded-md *:cursor-pointer"
         >
           <button
             v-for="tool in tools"
@@ -146,7 +147,7 @@
     />
     <div class="relative min-w-full">
       <div
-        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600"
+        class="absolute p-4 bg-black/90 backdrop-blur-xl rounded-lg min-w-full box-content border border-neutral-600 text-center space-y-3"
         :class="{
           'top-0 left-1/2 -translate-x-1/2': editorLayout === 'v',
           'left-full bottom-0': editorLayout === 'h',
@@ -167,15 +168,7 @@
             <div v-if="isCode" class="text-xs text-white">{{ i }}</div>
           </button>
         </div>
-        <div class="flex justify-center gap-4">
-          <button
-            @click="emit('done')"
-            :disabled="isCode || !isFilledEnough || editorStore.isPlacing"
-            class="border-current border disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-2 py-1 cursor-pointer pointer-events-auto text-primary uppercase"
-          >
-            {{ editorStore.isPlacing ? 'Dropping...' : 'Drop' }}
-          </button>
-        </div>
+        <slot name="drop" />
       </div>
     </div>
   </div>
@@ -195,7 +188,6 @@ import SparkleIcon from '@/assets/icons/sparkle.svg'
 import CheckmarkIcon from '@/assets/icons/checkmark.svg'
 import InfoIcon from '@/assets/icons/info.svg'
 import ExpressionEditor from '@/components/Editor/ExpressionEditor.vue'
-import { renderArtwork } from '@/components/Artwork/renderArtwork'
 import ExpressionHelp from './ExpressionHelp.vue'
 import type { CanvasInfo } from '@/shared/types'
 
@@ -237,7 +229,6 @@ const { top, left, size, canvasInfo, gridColor } = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  done: []
   wheel: [event: WheelEvent]
 }>()
 
@@ -248,20 +239,12 @@ const isDrawing = ref(false)
 const isCode = computed(() => editorStore.tool === 'code')
 const pixelSize = computed(() => size / canvasInfo.artwork_resolution)
 
-const coloredPixelCount = ref(0)
-const isFilledEnough = computed(
-  () =>
-    coloredPixelCount.value >= (canvasInfo.artwork_resolution * canvasInfo.artwork_resolution) / 8,
-)
-
 function drawCanvas() {
   if (!pixelCanvas.value) return
   const ctx = pixelCanvas.value.getContext('2d')
   if (!ctx) return
   const resolution = canvasInfo.artwork_resolution
-  const offscreenCtx = editorStore.offscreenCanvas.getContext('2d')!
-  offscreenCtx.clearRect(0, 0, offscreenCtx.canvas.width, offscreenCtx.canvas.height)
-  coloredPixelCount.value = renderArtwork(editorStore.pixels, offscreenCtx, 0, 0, 64 / resolution)
+  editorStore.renderToOffscreenCanvas()
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(editorStore.offscreenCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height)

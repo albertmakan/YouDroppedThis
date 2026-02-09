@@ -2,13 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
 import { solvePostfix, tokenize, tokensToPostfix } from '@/utils/parser'
 import f from '@/utils/builtInFunctions'
+import { renderArtwork } from '@/components/Artwork/renderArtwork'
 
 const emptyPixel = ''
 
 export const useEditorStore = defineStore('editor', () => {
-  const isOpen = ref(false)
-  const location = ref<{ x: number; y: number } | null>(null)
-  const isPlacing = ref(false)
   const selectedColor = ref('#ffffff')
   const pixels = ref([[emptyPixel]])
   const offscreenCanvas = new OffscreenCanvas(64, 64)
@@ -16,13 +14,14 @@ export const useEditorStore = defineStore('editor', () => {
   const id = ref(0)
   const tool = ref<'pen' | 'eraser' | 'fill' | 'code' | null>('pen')
   const expression = ref('')
+  const isFilledEnough = ref(false)
 
   const history = ref([{ pixels: [[emptyPixel]] }])
   const historyStep = ref(0)
   const canUndo = computed(() => historyStep.value > 0)
   const canRedo = computed(() => historyStep.value < history.value.length - 1)
 
-  const drafts = new Map<number, string[][]>()
+  const drafts = new Map<number, { pixels: string[][] }>()
 
   const context = ref({
     x: 0,
@@ -42,14 +41,14 @@ export const useEditorStore = defineStore('editor', () => {
       history.value.shift()
       historyStep.value--
     }
-    drafts.set(id.value, pixels.value)
+    drafts.set(id.value, { pixels: pixels.value })
   }
 
   function undo() {
     if (canUndo.value) {
       historyStep.value--
       pixels.value = history.value[historyStep.value].pixels.map((row) => [...row])
-      drafts.set(id.value, pixels.value)
+      drafts.set(id.value, { pixels: pixels.value })
     }
   }
 
@@ -57,7 +56,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (canRedo.value) {
       historyStep.value++
       pixels.value = history.value[historyStep.value].pixels.map((row) => [...row])
-      drafts.set(id.value, pixels.value)
+      drafts.set(id.value, { pixels: pixels.value })
     }
   }
 
@@ -101,7 +100,8 @@ export const useEditorStore = defineStore('editor', () => {
     if (!newPalette.includes(selectedColor.value)) selectedColor.value = newPalette[0] || emptyPixel
 
     if (drafts.has(canvasId)) {
-      pixels.value = drafts.get(canvasId)!
+      const { pixels: draftPixels } = drafts.get(canvasId)!
+      pixels.value = draftPixels
     } else {
       pixels.value = Array.from({ length: resolution }, () =>
         Array.from({ length: resolution }, () => emptyPixel),
@@ -146,15 +146,21 @@ export const useEditorStore = defineStore('editor', () => {
     return { palette: usedPalette, mat: matrix }
   }
 
+  function renderToOffscreenCanvas() {
+    const offscreenCtx = offscreenCanvas.getContext('2d')!
+    offscreenCtx.clearRect(0, 0, offscreenCtx.canvas.width, offscreenCtx.canvas.height)
+    const resolution = pixels.value.length
+    const coloredPixelCount = renderArtwork(pixels.value, offscreenCtx, 0, 0, 64 / resolution)
+    isFilledEnough.value = coloredPixelCount >= (resolution * resolution) / 8
+  }
+
   return {
-    isOpen,
-    location,
-    isPlacing,
     selectedColor,
     pixels,
     tool,
     expression,
     context: readonly(context),
+    isFilledEnough,
     setPixel,
     clearCanvas,
     applyFunction,
@@ -165,6 +171,7 @@ export const useEditorStore = defineStore('editor', () => {
     undo,
     redo,
     offscreenCanvas,
+    renderToOffscreenCanvas,
     setConfig,
   }
 })

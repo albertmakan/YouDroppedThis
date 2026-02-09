@@ -6,9 +6,7 @@ export const artworkRouter = new Router();
 
 artworkRouter.post("/place", async (ctx) => {
   const userId = ctx.state.user.id;
-  const canvasId = parseInt(
-    ctx.request.url.searchParams.get("canvas_id") || ""
-  );
+  const canvasId = BigInt(ctx.request.url.searchParams.get("canvas_id") || "");
   if (!canvasId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid canvas id" };
@@ -42,15 +40,13 @@ artworkRouter.post("/place", async (ctx) => {
 
 artworkRouter.post("/collect/:id", async (ctx) => {
   const userId = ctx.state.user.id;
-  const canvasId = parseInt(
-    ctx.request.url.searchParams.get("canvas_id") || ""
-  );
+  const canvasId = BigInt(ctx.request.url.searchParams.get("canvas_id") || "");
   if (!canvasId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid canvas id" };
     return;
   }
-  const artworkId = parseInt(ctx.params.id);
+  const artworkId = BigInt(ctx.params.id);
   if (!artworkId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid id" };
