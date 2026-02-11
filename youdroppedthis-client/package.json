@@ -27,6 +27,7 @@
     "@vueuse/core": "^13.9.0",
     "axios": "^1.11.0",
     "pinia": "^3.0.3",
+    "vite-prerender-plugin": "^0.5.12",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },

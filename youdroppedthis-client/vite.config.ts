@@ -4,6 +4,7 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import tailwindcss from '@tailwindcss/vite'
 import svgLoader from 'vite-svg-loader'
+import { vitePrerenderPlugin } from 'vite-prerender-plugin'
 // import vueDevTools from 'vite-plugin-vue-devtools'
 
 Object.assign(process.env, loadEnv('all', process.cwd()))
@@ -15,6 +16,9 @@ export default defineConfig({
     vueJsx(),
     tailwindcss(),
     svgLoader({ defaultImport: 'component' }),
+    vitePrerenderPlugin({
+      renderTarget: '#app',
+    }),
     //  vueDevTools(),
   ],
   resolve: {
