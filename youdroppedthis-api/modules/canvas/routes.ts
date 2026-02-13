@@ -162,12 +162,7 @@ canvasRouter.get("/:id/meta", async (ctx) => {
       return;
     }
 
-    const previewUrl = //`${ctx.request.url.origin}/api/canvases/${canvasId}/preview.svg`;
-      generatePreviewImage(
-        canvas.name,
-        canvas.palette ?? [],
-        canvas.background_color ?? "#18181b",
-      ).toDataURL();
+    const previewUrl = `${ctx.request.url.origin}/api/canvases/${canvasId}/preview.png`;
     const siteUrl = "https://youdroppedthis.xyz";
     const title = canvas.name || "Untitled";
     const description =
@@ -253,7 +248,7 @@ canvasRouter.get("/:id/preview.png", async (ctx) => {
   const imageBuffer = generatePreviewImage(
     canvas.name,
     canvas.palette ?? [],
-    canvas.background_color ?? "",
+    canvas.background_color ?? "#18181b",
   );
 
   ctx.response.headers.set("Content-Type", "image/png");
