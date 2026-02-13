@@ -1,3 +1,4 @@
+import { createCanvas } from "canvas";
 import { Router } from "../../deps.ts";
 import {
   authMiddleware,
@@ -161,7 +162,12 @@ canvasRouter.get("/:id/meta", async (ctx) => {
       return;
     }
 
-    const previewUrl = `${ctx.request.url.origin}/api/canvases/${canvasId}/preview.svg`;
+    const previewUrl = //`${ctx.request.url.origin}/api/canvases/${canvasId}/preview.svg`;
+      generatePreviewImage(
+        canvas.name,
+        canvas.palette ?? [],
+        canvas.background_color ?? "#18181b",
+      ).toDataURL();
     const siteUrl = "https://youdroppedthis.xyz";
     const title = canvas.name || "Untitled";
     const description =
@@ -220,7 +226,7 @@ canvasRouter.get("/:id/preview.svg", async (ctx) => {
       return;
     }
 
-    const svg = generatePaletteSVG(
+    const svg = generatePreviewSVG(
       canvas.palette || [],
       canvas.background_color || "#18181b",
       canvas.name,
@@ -235,6 +241,69 @@ canvasRouter.get("/:id/preview.svg", async (ctx) => {
   }
 });
 
+canvasRouter.get("/:id/preview.png", async (ctx) => {
+  const canvasId = BigInt(ctx.params.id);
+  const canvas = await CanvasService.getCanvasInfo(canvasId);
+
+  if (!canvas) {
+    ctx.response.status = 404;
+    ctx.response.body = "Canvas not found";
+    return;
+  }
+  const imageBuffer = generatePreviewImage(
+    canvas.name,
+    canvas.palette ?? [],
+    canvas.background_color ?? "",
+  );
+
+  ctx.response.headers.set("Content-Type", "image/png");
+  ctx.response.headers.set("Cache-Control", "public, max-age=3600");
+  ctx.response.body = imageBuffer.toBuffer("image/png");
+});
+
+function generatePreviewImage(
+  name: string,
+  palette: string[],
+  bgColor: string,
+) {
+  const width = 1200;
+  const height = 630;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // Background
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // Palette swatches
+  const swatchSize = 80;
+  const gap = 20;
+  const totalWidth = palette.length * swatchSize + (palette.length - 1) * gap;
+  const startX = (width - totalWidth) / 2;
+  const startY = (height - swatchSize) / 2;
+
+  palette.forEach((color, i) => {
+    const x = startX + i * (swatchSize + gap);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.rect(x, startY, swatchSize, swatchSize);
+    ctx.fill();
+  });
+
+  // Canvas name
+  ctx.fillStyle = "#e0e0e0";
+  ctx.font = "600 48px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(name, width / 2, startY - 60);
+
+  // Branding
+  ctx.fillStyle = "#666";
+  ctx.font = "20px sans-serif";
+  ctx.fillText("YouDroppedThis", width / 2, startY + swatchSize + 60);
+
+  return canvas; //.toDataURL(); //toBuffer("image/png");
+}
+
 function escapeHtml(text: string): string {
   const map: Record<string, string> = {
     "&": "&amp;",
@@ -246,7 +315,7 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (m) => map[m]);
 }
 
-function generatePaletteSVG(
+function generatePreviewSVG(
   palette: string[],
   backgroundColor: string,
   canvasName: string,

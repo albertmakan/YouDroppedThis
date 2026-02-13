@@ -10,6 +10,7 @@
     "postgres": "https://deno.land/x/postgres@v0.17.0/mod.ts",
     "bcript": "https://deno.land/x/bcrypt@v0.4.1/mod.ts",
     "zod": "https://deno.land/x/zod@v3.21.4/mod.ts",
-    "supabase": "jsr:@supabase/supabase-js@2"
+    "supabase": "jsr:@supabase/supabase-js@2",
+    "canvas": "https://deno.land/x/canvas/mod.ts"
   }
 }
