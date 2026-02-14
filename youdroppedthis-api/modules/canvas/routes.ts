@@ -6,6 +6,7 @@ import {
 } from "../../middleware/auth.ts";
 import { CanvasService } from "./service.ts";
 import { canvasHostingRequestSchema } from "./validation.ts";
+import { rgbToHSL } from "../../utils/color.ts";
 
 export const canvasRouter = new Router();
 
@@ -164,9 +165,9 @@ canvasRouter.get("/:id/meta", async (ctx) => {
 
     const previewUrl = `${ctx.request.url.origin}/api/canvases/${canvasId}/preview.png`;
     const siteUrl = "https://youdroppedthis.xyz";
-    const title = canvas.name || "Untitled";
+    const title = escapeHtml(canvas.name) || "Untitled";
     const description =
-      canvas.description ||
+      escapeHtml(canvas.description) ||
       "A shared canvas for moments, not monuments. Pixel art that lives for a while, then quietly fades.";
 
     // Generate HTML with OG meta tags
@@ -175,23 +176,23 @@ canvasRouter.get("/:id/meta", async (ctx) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)} | YouDroppedThis</title>
+  <title>${title} | YouDroppedThis</title>
   
-  <meta name="title" content="${escapeHtml(title)}">
-  <meta name="description" content="${escapeHtml(description)}">
+  <meta name="title" content="${title}">
+  <meta name="description" content="${description}">
   
   <meta property="og:type" content="website">
   <meta property="og:url" content="${siteUrl}/canvas/${canvasId}">
-  <meta property="og:title" content="${escapeHtml(title)}">
-  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
   <meta property="og:image" content="${previewUrl}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   
   <meta property="twitter:card" content="summary_large_image">
   <meta property="twitter:url" content="${siteUrl}/canvas/${canvasId}">
-  <meta property="twitter:title" content="${escapeHtml(title)}">
-  <meta property="twitter:description" content="${escapeHtml(description)}">
+  <meta property="twitter:title" content="${title}">
+  <meta property="twitter:description" content="${description}">
   <meta property="twitter:image" content="${previewUrl}">
   
   <meta http-equiv="refresh" content="0;url=${siteUrl}/canvas/${canvasId}">
@@ -210,34 +211,23 @@ canvasRouter.get("/:id/meta", async (ctx) => {
   }
 });
 
-canvasRouter.get("/:id/preview.svg", async (ctx) => {
-  const canvasId = BigInt(ctx.params.id);
-  try {
-    const canvas = await CanvasService.getCanvasInfo(canvasId);
-
-    if (!canvas) {
-      ctx.response.status = 404;
-      ctx.response.body = "Canvas not found";
-      return;
-    }
-
-    const svg = generatePreviewSVG(
-      canvas.palette || [],
-      canvas.background_color || "#18181b",
-      canvas.name,
-    );
-
-    ctx.response.headers.set("Content-Type", "image/svg+xml");
-    ctx.response.headers.set("Cache-Control", "public, max-age=3600");
-    ctx.response.body = svg;
-  } catch (error) {
-    console.error("Error generating preview:", error);
-    ctx.response.status = 500;
-  }
-});
+const previewCache = new Map<
+  bigint,
+  { buffer: Uint8Array; timestamp: number }
+>();
 
 canvasRouter.get("/:id/preview.png", async (ctx) => {
   const canvasId = BigInt(ctx.params.id);
+
+  const cached = previewCache.get(canvasId);
+  if (cached) {
+    ctx.response.headers.set("Content-Type", "image/png");
+    ctx.response.headers.set("Cache-Control", "public, max-age=3600");
+    ctx.response.headers.set("X-Cache", "HIT");
+    ctx.response.body = cached.buffer;
+    return;
+  }
+
   const canvas = await CanvasService.getCanvasInfo(canvasId);
 
   if (!canvas) {
@@ -249,11 +239,14 @@ canvasRouter.get("/:id/preview.png", async (ctx) => {
     canvas.name,
     canvas.palette ?? [],
     canvas.background_color ?? "#18181b",
-  );
+  ).toBuffer("image/png");
+
+  // Store in cache
+  previewCache.set(canvasId, { buffer: imageBuffer, timestamp: Date.now() });
 
   ctx.response.headers.set("Content-Type", "image/png");
   ctx.response.headers.set("Cache-Control", "public, max-age=3600");
-  ctx.response.body = imageBuffer.toBuffer("image/png");
+  ctx.response.body = imageBuffer;
 });
 
 function generatePreviewImage(
@@ -269,10 +262,11 @@ function generatePreviewImage(
   // Background
   ctx.fillStyle = bgColor;
   ctx.fillRect(0, 0, width, height);
+  const [r, g, b] = Array.from(ctx.getImageData(0, 0, 1, 1).data);
 
   // Palette swatches
-  const swatchSize = 80;
-  const gap = 20;
+  const swatchSize = 64;
+  const gap = 12;
   const totalWidth = palette.length * swatchSize + (palette.length - 1) * gap;
   const startX = (width - totalWidth) / 2;
   const startY = (height - swatchSize) / 2;
@@ -280,23 +274,26 @@ function generatePreviewImage(
   palette.forEach((color, i) => {
     const x = startX + i * (swatchSize + gap);
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.rect(x, startY, swatchSize, swatchSize);
-    ctx.fill();
+    ctx.fillRect(x, startY, swatchSize, swatchSize);
   });
 
   // Canvas name
-  ctx.fillStyle = "#e0e0e0";
-  ctx.font = "600 48px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(name, width / 2, startY - 60);
+  const [h, s, l] = rgbToHSL(r, g, b);
+  ctx.fillStyle = `hsl(${h}, ${s}%, ${l + (l > 50 ? -50 : 50)}%)`;
+  ctx.font = "600 32px sans-serif";
+  const nameWidth = ctx.measureText(name).width;
+  ctx.fillText(name, (width - nameWidth) / 2, startY - 60);
 
   // Branding
-  ctx.fillStyle = "#666";
+  const brandText = "YouDroppedThis";
   ctx.font = "20px sans-serif";
-  ctx.fillText("YouDroppedThis", width / 2, startY + swatchSize + 60);
+  const brandingWidth = ctx.measureText(brandText).width;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, height - 36, brandingWidth + 16, 36);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(brandText, 8, height - 10);
 
-  return canvas; //.toDataURL(); //toBuffer("image/png");
+  return canvas;
 }
 
 function escapeHtml(text: string): string {
@@ -308,75 +305,4 @@ function escapeHtml(text: string): string {
     "'": "&#039;",
   };
   return text.replace(/[&<>"']/g, (m) => map[m]);
-}
-
-function generatePreviewSVG(
-  palette: string[],
-  backgroundColor: string,
-  canvasName: string,
-): string {
-  const width = 1200;
-  const height = 630;
-  const swatchSize = 80;
-  const gap = 20;
-  const totalWidth = palette.length * swatchSize + (palette.length - 1) * gap;
-  const startX = (width - totalWidth) / 2;
-  const startY = (height - swatchSize) / 2;
-
-  // Generate color swatches
-  const swatches = palette
-    .map((color, i) => {
-      const x = startX + i * (swatchSize + gap);
-      return `
-        <rect 
-          x="${x}" 
-          y="${startY}" 
-          width="${swatchSize}" 
-          height="${swatchSize}" 
-          fill="${color}" 
-          rx="8"
-        />`;
-    })
-    .join("");
-
-  const safeName = escapeHtml(canvasName);
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="${width}" height="${height}" fill="${backgroundColor}"/>
-  
-  <!-- Gradient overlay for depth -->
-  <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:rgb(0,0,0);stop-opacity:0" />
-      <stop offset="100%" style="stop-color:rgb(0,0,0);stop-opacity:0.1" />
-    </linearGradient>
-  </defs>
-  <rect width="${width}" height="${height}" fill="url(#grad)"/>
-  
-  <!-- Color swatches -->
-  ${swatches}
-  
-  <!-- Canvas name -->
-  <text 
-    x="${width / 2}" 
-    y="${startY - 40}" 
-    font-family="system-ui, -apple-system, sans-serif" 
-    font-size="36" 
-    font-weight="600"
-    fill="#e0e0e0" 
-    text-anchor="middle"
-  >${safeName}</text>
-  
-  <!-- Subtle branding -->
-  <text 
-    x="${width / 2}" 
-    y="${startY + swatchSize + 50}" 
-    font-family="system-ui, -apple-system, sans-serif" 
-    font-size="18" 
-    fill="#666" 
-    text-anchor="middle"
-  >YouDroppedThis</text>
-</svg>`;
 }

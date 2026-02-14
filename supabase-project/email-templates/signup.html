@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Confirm your email - YouDroppedThis</title>
+    <!--[if mso]>
+      <style type="text/css">
+        body,
+        table,
+        td {
+          font-family: Arial, Helvetica, sans-serif !important;
+        }
+      </style>
+    <![endif]-->
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #0a0a0a;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, Oxygen,
+        Ubuntu, Cantarell, sans-serif;
+    "
+  >
+    <table
+      role="presentation"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+      width="100%"
+      style="background-color: #0a0a0a"
+    >
+      <tr>
+        <td style="padding: 40px 20px">
+          <!-- Main container -->
+          <table
+            role="presentation"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            width="100%"
+            style="
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #1a1a1a;
+              border-radius: 12px;
+              overflow: hidden;
+            "
+          >
+            <!-- Header with gradient -->
+            <tr>
+              <td
+                style="
+                  padding: 40px 40px 30px;
+                  text-align: center;
+                  background: linear-gradient(135deg, #14b8a6 0%, #f59e0b 100%);
+                "
+              >
+                <h1
+                  style="
+                    margin: 0;
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: #ffffff;
+                    letter-spacing: -0.5px;
+                  "
+                >
+                  YouDroppedThis
+                </h1>
+              </td>
+            </tr>
+
+            <!-- Main content -->
+            <tr>
+              <td style="padding: 40px 40px 30px">
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 18px;
+                    line-height: 1.6;
+                    color: #e0e0e0;
+                  "
+                >
+                  Hello,
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    color: #e0e0e0;
+                  "
+                >
+                  You're almost in.
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 32px;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    color: #a0a0a0;
+                  "
+                >
+                  Please confirm your email address to begin creating and
+                  sharing moments on YouDroppedThis.
+                </p>
+
+                <!-- CTA Button -->
+                <table
+                  role="presentation"
+                  cellspacing="0"
+                  cellpadding="0"
+                  border="0"
+                  style="margin: 0 auto"
+                >
+                  <tr>
+                    <td
+                      style="
+                        border-radius: 8px;
+                        background: linear-gradient(
+                          135deg,
+                          #14b8a6 0%,
+                          #0d9488 100%
+                        );
+                        text-align: center;
+                      "
+                    >
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 16px 48px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 8px;
+                        "
+                      >
+                        Confirm email
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p
+                  style="
+                    margin: 32px 0 0;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #666666;
+                    text-align: center;
+                  "
+                >
+                  This link will expire in 24 hours.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Philosophy section -->
+            <tr>
+              <td
+                style="
+                  padding: 30px 40px;
+                  background-color: #141414;
+                  border-top: 1px solid #2a2a2a;
+                "
+              >
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 14px;
+                    line-height: 1.7;
+                    color: #888888;
+                    font-style: italic;
+                  "
+                >
+                  YouDroppedThis is a place for small, shared creations that
+                  appear, live for a while, and fade. Nothing here needs to last
+                  forever.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="padding: 30px 40px 40px">
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    color: #666666;
+                  "
+                >
+                  This email was sent to {{ .Email }}. If you didn't request
+                  this, you can safely ignore this email.
+                </p>
+
+                <p style="margin: 0; font-size: 13px; color: #666666">
+                  — YouDroppedThis
+                </p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Unsubscribe/footer links -->
+          <table
+            role="presentation"
+            cellspacing="0"
+            cellpadding="0"
+            border="0"
+            width="100%"
+            style="max-width: 600px; margin: 20px auto 0"
+          >
+            <tr>
+              <td style="padding: 20px; text-align: center">
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 1.5;
+                    color: #666666;
+                  "
+                >
+                  <a
+                    href="{{ .SiteURL }}"
+                    style="color: #888888; text-decoration: none"
+                    >Visit YouDroppedThis</a
+                  >
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

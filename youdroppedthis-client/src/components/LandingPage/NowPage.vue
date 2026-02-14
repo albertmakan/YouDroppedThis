@@ -6,7 +6,11 @@
       <div class="my-10 gap-10 flex items-start justify-center flex-wrap">
         <CanvasCard v-for="canvas in data?.canvases" :canvas />
         <template v-if="isLoading">
-          <div v-for="i in 5" :key="i" class="bg-zinc-900 w-80 h-40 rounded-lg shrink-0"></div>
+          <div
+            v-for="i in 5"
+            :key="i"
+            class="bg-zinc-900 w-80 h-52 rounded-lg shrink-0 animate-pulse"
+          ></div>
         </template>
       </div>
       <div v-if="data?.canvases.length === 0" class="text-center">

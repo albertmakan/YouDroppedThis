@@ -109,7 +109,10 @@ function selectColor(index: number) {
 
 function addColor() {
   if (palette.value.length < props.maxColors) {
-    const newPalette = [...palette.value, '#ffffff']
+    const newPalette = [
+      ...palette.value,
+      selectedColorIndex.value === null ? '#ffffff' : palette.value[selectedColorIndex.value],
+    ]
     palette.value = newPalette
     // Auto-select the new color for editing
     selectedColorIndex.value = newPalette.length - 1

@@ -7,13 +7,9 @@ export default async (request: Request) => {
 
   if (BOT_PATTERN.test(userAgent) && url.pathname.match(/^\/c\/\d+$/)) {
     const canvasId = url.pathname.split('/').pop()
-
-    // Rewrite to your Railway API
     const apiUrl = new URL(`${Deno.env.get('VITE_API_URL')}/api/canvases/${canvasId}/meta`)
     return fetch(apiUrl)
   }
-
-  return
 }
 
 export const config = { path: '/c/*' }
