@@ -37,14 +37,26 @@ export function useCreateCanvas() {
   })
 }
 
-export function useCanvas(canvasId: Ref<number | undefined>, userId?: Ref<string | undefined>) {
+export function useCanvas(canvasId: Ref<number | undefined>) {
   return useQuery({
-    queryKey: ['canvas', canvasId, userId],
+    queryKey: ['canvas', canvasId],
     queryFn: () => {
       const id = canvasId.value
       if (id) return canvasApi.getCanvasInfo(id)
+      return null
     },
     enabled: !!canvasId.value,
+  })
+}
+
+export function useCanvasActivity(canvasId: Ref<number>, userId?: Ref<string | undefined>) {
+  return useQuery({
+    queryKey: ['canvas-activity', canvasId, userId],
+    queryFn: () => {
+      const id = canvasId.value
+      if (id && userId?.value) return canvasApi.getMyRecentActivity(id)
+      return null
+    },
   })
 }
 
@@ -53,24 +65,19 @@ export function useClaimHostReward(canvasId: Ref<number>) {
   return useMutation({
     mutationFn: () => canvasApi.claimHostReward(canvasId.value),
     onSuccess: ({ userProfile, canvas }) => {
-      queryClient.setQueryData(
-        ['canvas', canvasId, userProfile.id],
-        (data?: { canvas: CanvasInfo }) => ({
-          ...data,
-          canvas: { ...data?.canvas, ...canvas },
-        }),
-      )
+      queryClient.setQueryData(['canvas', canvasId], (data?: { canvas: CanvasInfo }) => ({
+        canvas: { ...data?.canvas, ...canvas },
+      }))
       queryClient.resetQueries({ queryKey: ['transactions'] })
       queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
     },
   })
 }
 
-export function useSyncCanvasState(canvasId: Ref<number>, userId?: Ref<string | undefined>) {
+export function useSyncCanvasState(canvasId: Ref<number>) {
   const queryClient = useQueryClient()
   return (canvasInfo: Partial<CanvasInfo>) => {
-    queryClient.setQueryData(['canvas', canvasId, userId], (data?: { canvas: CanvasInfo }) => ({
-      ...data,
+    queryClient.setQueryData(['canvas', canvasId], (data?: { canvas: CanvasInfo }) => ({
       canvas: { ...data?.canvas, ...canvasInfo },
     }))
   }

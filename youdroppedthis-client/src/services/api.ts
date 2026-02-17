@@ -77,7 +77,12 @@ export const canvasApi = {
 
   async getCanvasInfo(id: number) {
     const response = await api.get(`/canvases/${id}/info`)
-    return response.data as { canvas: CanvasInfo; recentActivity: RecentActivity }
+    return response.data as { canvas: CanvasInfo }
+  },
+
+  async getMyRecentActivity(canvasId: number) {
+    const response = await api.get(`/canvases/${canvasId}/my-recent-activity`)
+    return response.data as { recentActivity: RecentActivity }
   },
 
   async getArtworksInArea(

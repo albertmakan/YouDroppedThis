@@ -5,9 +5,9 @@
       @mousedown.stop
     >
       <div class="flex w-full justify-between gap-4 p-3 border-b border-neutral-600">
-        <div class="w-4/5">
-          <h2 class="wrap-break-word mb-3">{{ canvas.name }}</h2>
-          <p class="text-xs text-neutral-400">
+        <div class="w-4/5 space-y-3">
+          <h2 class="wrap-break-word">{{ canvas.name }}</h2>
+          <p v-if="canvas.created_by && canvas.host" class="text-xs text-neutral-400">
             Hosted by
             <span class="inline-flex gap-[0.5em] items-center">
               <ProfilePicture :profile="canvas.host" />
@@ -53,15 +53,15 @@
         <div class="pt-2 text-xs text-neutral-400 border-t border-neutral-800">
           <div class="flex justify-between gap-2">
             <span>Created</span>
-            <span>{{ formatDate(canvas.created_at) }}</span>
+            <time>{{ formatDateTime(canvas.created_at, true) }}</time>
           </div>
           <div v-if="canvas.first_artwork_at" class="flex justify-between gap-2">
             <span>First Placement</span>
-            <span>{{ formatDate(canvas.first_artwork_at) }}</span>
+            <time>{{ formatDateTime(canvas.first_artwork_at, true) }}</time>
           </div>
           <div v-if="canvas.last_artwork_at" class="flex justify-between gap-2">
             <span>Last Placement</span>
-            <span>{{ formatDate(canvas.last_artwork_at) }}</span>
+            <time>{{ formatDateTime(canvas.last_artwork_at, true) }}</time>
           </div>
         </div>
       </div>
@@ -73,18 +73,11 @@
 import XMarkIcon from '@/assets/icons/xmark.svg'
 import type { CanvasInfo } from '@/shared/types'
 import ProfilePicture from '@/components/User/ProfilePicture.vue'
+import { formatDateTime } from '@/utils/datetime'
 
 const { canvas } = defineProps<{ canvas: CanvasInfo }>()
 
 const emit = defineEmits<{ close: [] }>()
 
 const now = new Date().toISOString()
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date)
-}
 </script>

@@ -18,7 +18,7 @@
           <button @click="resetZoom" class="cursor-pointer hover:underline">Reset</button>
         </div>
         <div>🎨 Visible artworks: {{ visibleArtworks }}</div>
-        <div>🔌 Realtime: {{ realtimeSubscribeState }}</div>
+        <div>🔌 Realtime: {{ subscription?.state }}</div>
       </div>
       <button
         @click="showInfo = !showInfo"
@@ -67,7 +67,7 @@
         </div>
       </div>
     </div>
-    <div v-if="isError" class="fixed top-10 left-0 w-full z-10 px-10">
+    <div v-if="isCanvasError" class="fixed top-10 left-0 w-full z-10 px-10">
       <div class="backdrop-blur-xl bg-black/50 border border-secondary p-3 rounded-lg text-center">
         <p class="text-neutral-300">This moment isn’t here</p>
         <p class="text-sm text-neutral-400 my-3">
@@ -135,7 +135,7 @@
       :top="locationPreview.y"
       :left="locationPreview.x"
       :size="zoomedArtSize"
-      :collect-disabled="canvasInfo?.recentActivity.some(({ kind }) => kind === 'collection')"
+      :collect-disabled="activityInfo?.recentActivity.some(({ kind }) => kind === 'collection')"
     />
     <PixelArtEditorPopup
       v-if="canvasInfo && isEditorOpen && editorRelativeLocation && !editorLocationTaken"
@@ -196,7 +196,7 @@ import type { RealtimeChannel } from '@supabase/realtime-js'
 import { useAuthStore } from '@/stores/auth'
 import { useEditorStore } from '@/stores/editor'
 import type { Artwork } from '@/shared/types'
-import { useCanvas, useSyncCanvasState } from '@/composables/useCanvases'
+import { useCanvas, useCanvasActivity, useSyncCanvasState } from '@/composables/useCanvases'
 import { useCollectArtwork, usePlaceArtwork } from '@/composables/useUserArtworks'
 import { useToast } from '@/composables/useToast'
 import PixelArtEditorPopup from '@/components/Editor/PixelArtEditorPopup.vue'
@@ -239,7 +239,8 @@ const editorStore = useEditorStore()
 const router = useRouter()
 
 const canvasId = toRef(props, 'canvasId')
-const { data: canvasInfo, isError, error } = useCanvas(canvasId, toRef(props, 'userId'))
+const { data: canvasInfo, isError: isCanvasError } = useCanvas(canvasId)
+const { data: activityInfo } = useCanvasActivity(canvasId, toRef(props, 'userId'))
 const { mutate: mutatePlaceArtwork } = usePlaceArtwork(canvasId)
 const { mutate: mutateCollectArtwork } = useCollectArtwork(canvasId)
 const syncCanvasState = useSyncCanvasState(canvasId)
@@ -270,7 +271,7 @@ const now = ref(new Date().toISOString())
 const hasEnded = computed(() => canvasInfo.value?.canvas.accepting_artworks === false)
 const lastHourPlacementsCount = computed(() => {
   const oneHourAgo = new Date(Date.parse(now.value) - 3_600_000).toISOString()
-  const lastHourCount = canvasInfo.value?.recentActivity.reduce(
+  const lastHourCount = activityInfo.value?.recentActivity.reduce(
     (count, { event_time, kind }) =>
       kind === 'placement' && event_time > oneHourAgo ? count + 1 : count,
     0,
@@ -291,13 +292,12 @@ const canvasBounds = computed(() => canvasInfo.value?.canvas ?? PLACEHOLDER_BOUN
 
 const chunks = new Map<string, { artworks?: Artwork[]; isLoading: boolean }>()
 const subscription = ref<RealtimeChannel | null>(null)
-const realtimeSubscribeState = ref('')
 
 function subscribeToCanvas(canvasId: number) {
   const channel = supabase.channel(`canvas:${canvasId}`, { config: { private: true } })
   channel
     .on('broadcast', { event: '*' }, ({ payload, event }) => handleRealtimeEvent(event, payload))
-    .subscribe((state) => (realtimeSubscribeState.value = state))
+    .subscribe()
   subscription.value = channel
 }
 

@@ -60,7 +60,7 @@ import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import type { Artwork } from '@/shared/types'
 import CollectIcon from '@/assets/icons/collect.svg'
 import ProfilePicture from '@/components/User/ProfilePicture.vue'
-import { getH_M_S } from '@/utils/date'
+import { getH_M_S } from '@/utils/datetime'
 import { useAuthStore } from '@/stores/auth'
 const COLLECTION_COOLDOWN_MINUTES = 720
 

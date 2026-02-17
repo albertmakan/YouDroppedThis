@@ -1,9 +1,6 @@
 import { createCanvas } from "canvas";
 import { Router } from "../../deps.ts";
-import {
-  authMiddleware,
-  optionalAuthMiddleware,
-} from "../../middleware/auth.ts";
+import { authMiddleware } from "../../middleware/auth.ts";
 import { CanvasService } from "./service.ts";
 import { canvasHostingRequestSchema } from "./validation.ts";
 import { rgbToHSL } from "../../utils/color.ts";
@@ -61,8 +58,7 @@ canvasRouter.post("/", authMiddleware, async (ctx) => {
   }
 });
 
-canvasRouter.get("/:id/info", optionalAuthMiddleware, async (ctx) => {
-  const userId = ctx.state.user?.id;
+canvasRouter.get("/:id/info", async (ctx) => {
   const canvasId = BigInt(ctx.params.id);
   if (!canvasId) {
     ctx.response.status = 400;
@@ -76,13 +72,31 @@ canvasRouter.get("/:id/info", optionalAuthMiddleware, async (ctx) => {
       ctx.response.body = { error: "Canvas not found" };
       return;
     }
-    const recentActivity = userId
-      ? await CanvasService.getRecentActivity(canvasId, userId, 24)
-      : [];
-    ctx.response.body = { canvas, recentActivity };
+    ctx.response.body = { canvas };
   } catch {
     ctx.response.status = 500;
-    ctx.response.body = { error: "Failed to get canvas state" };
+    ctx.response.body = { error: "Failed to get canvas info" };
+  }
+});
+
+canvasRouter.get("/:id/my-recent-activity", authMiddleware, async (ctx) => {
+  const userId = ctx.state.user.id;
+  const canvasId = BigInt(ctx.params.id);
+  if (!canvasId) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Invalid id" };
+    return;
+  }
+  try {
+    const recentActivity = await CanvasService.getRecentActivity(
+      canvasId,
+      userId,
+      24,
+    );
+    ctx.response.body = { recentActivity };
+  } catch {
+    ctx.response.status = 500;
+    ctx.response.body = { error: "Failed to get recent activity" };
   }
 });
 

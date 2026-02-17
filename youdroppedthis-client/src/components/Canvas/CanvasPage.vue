@@ -7,7 +7,8 @@
       <div class="size-5"><MenuIcon /></div>
     </button>
   </div>
-  <div class="fixed top-0 right-0 p-2 z-20">
+  <div class="fixed top-0 right-0 flex gap-3 p-2 items-center z-20">
+    <ShareButton v-bind="props" />
     <ProfileButton />
   </div>
   <CanvasView v-bind="props" :user-id="authStore.user?.id" />
@@ -17,11 +18,12 @@
 <script setup lang="ts">
 import { watch, useTemplateRef, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import MenuIcon from '@/assets/icons/menu.svg'
 import ProfileButton from '@/components/User/ProfileButton.vue'
 import Drawer from '@/components/Layout/Drawer.vue'
 import CanvasView from './CanvasView.vue'
-import { useAuthStore } from '@/stores/auth'
+import ShareButton from './ShareButton.vue'
 
 const drawerRef = useTemplateRef<InstanceType<typeof Drawer>>('drawer')
 

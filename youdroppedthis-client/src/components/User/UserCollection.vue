@@ -45,16 +45,28 @@
         >
           <div class="m-auto mt-8 w-4/5" @click.stop>
             <div class="border border-neutral-600 rounded-t-lg bg-black p-2 flex justify-between">
-              <span class="inline-flex gap-[0.5em] items-center">
+              <span class="inline-flex gap-2 items-center">
                 <ProfilePicture :profile="selectedCreator" />
-                <span>{{ selectedCreator?.username }}</span>
+                <span>
+                  <div class="text-sm font-semibold">{{ selectedCreator?.username }}</div>
+                  <div class="text-neutral-300 text-xs relative">
+                    <button class="peer cursor-pointer text-left line-clamp-1">
+                      {{ selectedArtwork.canvas_name }}
+                    </button>
+                    <div
+                      class="peer-focus:block hidden z-90 active:block focus:block focus-within:block absolute left-0 top-full bg-black rounded-lg w-30 shadow-md border border-neutral-600 mt-1 p-2"
+                      tabindex="0"
+                    >
+                      <router-link
+                        class="cursor-pointer"
+                        :to="`/c/${selectedArtwork.canvas_id}?x=${selectedArtwork.x}&y=${selectedArtwork.y}&selected`"
+                      >
+                        Visit location
+                      </router-link>
+                    </div>
+                  </div>
+                </span>
               </span>
-              <router-link
-                class="size-6 cursor-pointer shrink-0"
-                :to="`/c/${selectedArtwork.canvas_id}?x=${selectedArtwork.x}&y=${selectedArtwork.y}&selected`"
-              >
-                <LocationIcon />
-              </router-link>
             </div>
             <div class="bg-zinc-900" :style="{ backgroundColor: selectedArtwork.background_color }">
               <ArtworkThumbnail :offscreen-canvas="selectedArtwork.offscreenCanvas" />
@@ -164,11 +176,10 @@ import type { Artwork } from '@/shared/types'
 import { useAuthStore } from '@/stores/auth'
 import { useProfile } from '@/composables/useProfiles'
 import { ITEMS_PER_PAGE, useUserArtworks } from '@/composables/useUserArtworks'
-import { formatRelativeTime, getH_M_S } from '@/utils/date'
+import { formatRelativeTime, getH_M_S } from '@/utils/datetime'
 import XMarkIcon from '@/assets/icons/xmark.svg'
 import PaletteIcon from '@/assets/icons/palette.svg'
 import CollectIcon from '@/assets/icons/collect.svg'
-import LocationIcon from '@/assets/icons/location.svg'
 import ArtworkThumbnail from '@/components/Artwork/ArtworkThumbnail.vue'
 import ProfilePicture from './ProfilePicture.vue'
 
@@ -202,7 +213,7 @@ const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useUserArtworks
 )
 
 function getArtworkStatus(artwork: Artwork) {
-  if (artwork.collected_by) {
+  if (artwork.collected_at) {
     return 'Collected ' + formatRelativeTime(artwork.collected_at)
   }
   const timeRemaining = new Date(artwork.expires_at).getTime() - Date.now()
@@ -210,6 +221,6 @@ function getArtworkStatus(artwork: Artwork) {
     const { hours, minutes } = getH_M_S(timeRemaining)
     return (hours > 0 ? `${hours}h ` : '') + `${minutes}m left`
   }
-  return 'Expired ' + formatRelativeTime(artwork.expires_at)
+  return 'Faded ' + formatRelativeTime(artwork.expires_at)
 }
 </script>

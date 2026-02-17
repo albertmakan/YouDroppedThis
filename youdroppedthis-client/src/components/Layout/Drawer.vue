@@ -30,12 +30,11 @@
             Center view
           </button>
         </div>
-        <div class="mt-6">
+        <div class="mt-6" v-if="authStore.isAuthenticated">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Collection
           </h3>
           <button
-            v-if="authStore.isAuthenticated"
             @click="showCollection = true"
             class="flex gap-3 items-center text-left px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
           >
@@ -43,22 +42,19 @@
             Collected pieces
           </button>
         </div>
-        <div class="mt-6">
+        <div class="mt-6" v-if="authStore.isAuthenticated">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Participation
           </h3>
-          <DailyBonus v-if="authStore.isAuthenticated" />
-          <div
-            v-if="authStore.isAuthenticated"
-            class="mt-2 px-3 py-2 bg-neutral-900 rounded text-sm"
-          >
+          <DailyBonus />
+          <div class="mt-2 px-3 py-2 bg-neutral-900 rounded text-sm">
             <div class="text-xs">Balance:</div>
             <div class="text-lg font-bold text-primary">
               {{ authStore.user?.balance || 0 }} coins
             </div>
           </div>
         </div>
-        <div class="mt-6">
+        <div class="mt-6" v-if="authStore.isAuthenticated">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Create
           </h3>
@@ -70,15 +66,11 @@
             Host a moment
           </router-link>
         </div>
-        <div class="mt-6 space-y-1">
+        <div class="mt-6 space-y-1" v-if="authStore.user">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 mb-2">
             Hosted
           </h3>
-          <CanvasesList
-            v-if="authStore.user"
-            :user-id="authStore.user.id"
-            :active-canvas-id="canvasId"
-          />
+          <CanvasesList :user-id="authStore.user.id" :active-canvas-id="canvasId" />
         </div>
       </nav>
     </div>

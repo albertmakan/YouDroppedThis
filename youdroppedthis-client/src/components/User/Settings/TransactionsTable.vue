@@ -20,7 +20,7 @@
             :key="transaction.id"
             class="border-b border-neutral-700 hover:bg-neutral-900 transition-colors"
           >
-            <td class="py-3 px-4 text-sm">{{ formatDate(transaction.created_at) }}</td>
+            <td class="py-3 px-4 text-sm">{{ formatDateTime(transaction.created_at) }}</td>
             <td class="py-3 px-4">
               <span class="">
                 {{ typeLabels[transaction.type] }}
@@ -63,8 +63,9 @@
 </template>
 
 <script setup lang="ts">
-import { useUserTransactions } from '@/composables/useUserTransactions'
 import { toRef } from 'vue'
+import { formatDateTime } from '@/utils/datetime'
+import { useUserTransactions } from '@/composables/useUserTransactions'
 
 const typeLabels = {
   drop_fee: 'Drop fee',
@@ -80,15 +81,4 @@ const props = defineProps<{ userId: string }>()
 const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isFetching } = useUserTransactions(
   toRef(props, 'userId'),
 )
-
-function formatDate(dateString: string) {
-  const date = new Date(dateString)
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
 </script>

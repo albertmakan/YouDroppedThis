@@ -1,6 +1,12 @@
 <template>
   <Header />
   <div class="max-w-2xl mx-auto p-6">
+    <div
+      v-if="!authStore.isAuthenticated"
+      class="backdrop-blur-xl border border-secondary p-3 rounded-lg text-center mb-8"
+    >
+      Please sign in to host a moment
+    </div>
     <!-- Review Screen -->
     <template v-if="showReview">
       <div class="mb-8">
@@ -290,6 +296,7 @@
         <!-- Submit -->
         <div class="pt-6">
           <button
+            v-if="authStore.isAuthenticated"
             @click="showReview = true"
             :disabled="!canSubmit"
             class="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-primary to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:from-neutral-800 disabled:to-neutral-800 disabled:text-neutral-600 font-semibold transition-all text-lg disabled:cursor-not-allowed"

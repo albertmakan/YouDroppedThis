@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/vue-que
 import { artworkApi, type PlacementRequest } from '@/services/api'
 import { type Ref } from 'vue'
 import { createOffscreenCanvas } from '@/components/Artwork/renderArtwork'
-import type { CanvasInfo, RecentActivity } from '@/shared/types'
+import type { RecentActivity } from '@/shared/types'
 
 export const ITEMS_PER_PAGE = 16
 
@@ -36,9 +36,8 @@ export function usePlaceArtwork(canvasId: Ref<number>) {
       queryClient.resetQueries({ queryKey: ['transactions'] })
       queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
       queryClient.setQueryData(
-        ['canvas', canvasId, userProfile.id],
-        (data?: { canvas: CanvasInfo; recentActivity: RecentActivity }) => ({
-          ...data,
+        ['canvas-activity', canvasId, userProfile.id],
+        (data?: { recentActivity: RecentActivity }) => ({
           recentActivity: [
             { artwork_id: artwork.id, event_time: artwork.created_at, kind: 'placement' },
             ...(data?.recentActivity ?? []),
@@ -57,9 +56,8 @@ export function useCollectArtwork(canvasId: Ref<number>) {
       queryClient.resetQueries({ queryKey: ['artworks', 'user', userProfile.id, 'collected'] })
       queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
       queryClient.setQueryData(
-        ['canvas', canvasId, userProfile.id],
-        (data?: { canvas: CanvasInfo; recentActivity: RecentActivity }) => ({
-          ...data,
+        ['canvas-activity', canvasId, userProfile.id],
+        (data?: { recentActivity: RecentActivity }) => ({
           recentActivity: [
             { artwork_id: artwork.id, event_time: artwork.collected_at, kind: 'collection' },
             ...(data?.recentActivity ?? []),
