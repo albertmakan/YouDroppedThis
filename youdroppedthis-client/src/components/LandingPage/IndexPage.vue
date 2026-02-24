@@ -20,12 +20,9 @@
         >
           Enter a moment
         </router-link>
-        <router-link
-          to="#how-it-works"
-          class="text-neutral-400 hover:text-neutral-300 transition-colors"
-        >
+        <a href="#how-it-works" class="text-neutral-400 hover:text-neutral-300 transition-colors">
           Learn how it works
-        </router-link>
+        </a>
       </div>
     </header>
 

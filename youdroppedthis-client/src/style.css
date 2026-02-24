@@ -27,7 +27,7 @@
 
   .dotted-background {
     background-image: radial-gradient(
-      circle at 1px 1px,
+      circle at 10px 10px,
       var(--color-neutral-800) 1px,
       transparent 0
     );

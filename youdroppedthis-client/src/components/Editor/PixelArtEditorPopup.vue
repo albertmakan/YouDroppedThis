@@ -184,7 +184,7 @@ import XMarkIcon from '@/assets/icons/xmark.svg'
 import UndoIcon from '@/assets/icons/undo.svg'
 import RedoIcon from '@/assets/icons/redo.svg'
 import GridIcon from '@/assets/icons/grid.svg'
-import SparkleIcon from '@/assets/icons/sparkle.svg'
+import FunctionIcon from '@/assets/icons/function.svg'
 import CheckmarkIcon from '@/assets/icons/checkmark.svg'
 import InfoIcon from '@/assets/icons/info.svg'
 import ExpressionEditor from '@/components/Editor/ExpressionEditor.vue'
@@ -216,7 +216,7 @@ const tools = [
   { name: 'pen', icon: DrawIcon },
   { name: 'eraser', icon: EraseIcon },
   { name: 'fill', icon: FillIcon },
-  { name: 'code', icon: SparkleIcon },
+  { name: 'code', icon: FunctionIcon },
 ] as const
 
 const { top, left, size, canvasInfo, gridColor } = defineProps<{
@@ -235,7 +235,8 @@ const emit = defineEmits<{
 const editorLayout = ref<'h' | 'v'>('v')
 const isExpressionHelpOpen = ref(false)
 const showGrid = ref(true)
-const isDrawing = ref(false)
+let drawingButton: number | null = null
+let isPen = true
 const isCode = computed(() => editorStore.tool === 'code')
 const pixelSize = computed(() => size / canvasInfo.artwork_resolution)
 
@@ -277,20 +278,26 @@ function getPixelCoordinates(event: MouseEvent | TouchEvent) {
 
 function startDrawing(event: MouseEvent | TouchEvent) {
   if ('touches' in event && event.touches.length !== 1) return
-  isDrawing.value = true
+  isPen = editorStore.tool === 'pen'
+  drawingButton = 'button' in event ? event.button : 0
+  if (drawingButton === 1) editorStore.tool = null
+  else if (drawingButton === 2 && isPen) editorStore.tool = 'eraser'
   draw(event)
 }
 
 function draw(event: MouseEvent | TouchEvent) {
   if ('touches' in event && event.touches.length !== 1) return
-  if (!isDrawing.value) return
+  if (drawingButton === null) return
   const { x, y } = getPixelCoordinates(event)
   editorStore.setPixel(x, y)
 }
 
 function stopDrawing() {
-  if (isDrawing.value) {
-    isDrawing.value = false
+  if (drawingButton !== null) {
+    if (drawingButton === 2 && isPen) {
+      editorStore.tool = 'pen'
+    }
+    drawingButton = null
     editorStore.saveState()
   }
 }

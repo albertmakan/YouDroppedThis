@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen dotted-background">
-    <Header @open-drawer="drawerRef?.openDrawer" />
+    <Header @open-drawer="drawerRef?.openDrawer" :show-host-option="authStore.isAuthenticated" />
     <div class="max-w-6xl mx-auto p-6">
       <h1 class="text-2xl font-bold mb-2">Happening now</h1>
       <div class="my-10 gap-10 flex items-start justify-center flex-wrap">
@@ -19,8 +19,9 @@
         <router-link
           v-if="authStore.isAuthenticated"
           to="/new"
-          class="px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
+          class="inline-flex gap-3 items-center px-3 py-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-fit cursor-pointer"
         >
+          <span class="size-5 shrink-0"><PlusIcon /></span>
           Host a moment
         </router-link>
       </div>
@@ -36,6 +37,7 @@ import Header from '@/components/Layout/Header.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNowActiveCanvases } from '@/composables/useCanvases'
 import CanvasCard from '@/components/Canvas/CanvasCard.vue'
+import PlusIcon from '@/assets/icons/plus.svg'
 
 const { data, isLoading } = useNowActiveCanvases()
 

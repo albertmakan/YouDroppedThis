@@ -4,7 +4,7 @@ export const colorSchema = z
   .string()
   .regex(
     /^(#[0-9A-Fa-f]{6}|)$/,
-    "Colors must be in hex format (#RRGGBB) or empty string for transparent"
+    "Colors must be in hex format (#RRGGBB) or empty string for transparent",
   );
 
 export const placementSchema = z.object({
@@ -15,7 +15,7 @@ export const placementSchema = z.object({
       palette: colorSchema
         .array()
         .min(1, "Palette must have at least one color")
-        .max(256, "Palette cannot exceed 256 colors"),
+        .max(32, "Palette cannot exceed 32 colors"),
       mat: z
         .number()
         .int()
@@ -32,19 +32,19 @@ export const placementSchema = z.object({
             const width = mat[0]?.length || 0;
             return mat.every((row) => row.length === width);
           },
-          { message: "All matrix rows must have the same length" }
+          { message: "All matrix rows must have the same length" },
         )
         .refine(
           (mat) => {
-            // Validate dimensions are exactly 8, 16, or 32
-            const validSizes = [8, 16, 32];
+            const validSizes = [8, 16, 32, 64];
             const height = mat.length;
             const width = mat[0]?.length || 0;
             return validSizes.includes(height) && validSizes.includes(width);
           },
           {
-            message: "Matrix dimensions must be exactly 8x8, 16x16, or 32x32",
-          }
+            message:
+              "Matrix dimensions must be exactly 8x8, 16x16, 32x32 or 64x64",
+          },
         ),
     })
     .refine(
@@ -66,13 +66,13 @@ export const placementSchema = z.object({
           data.palette.length - 1
         }`,
         path: ["mat"],
-      })
+      }),
     )
     .refine(
       (data) => {
         // Find transparent palette index (empty string)
         const transparentIndex = data.palette.findIndex(
-          (color) => color === ""
+          (color) => color === "",
         );
 
         // Count non-transparent pixels
@@ -96,7 +96,7 @@ export const placementSchema = z.object({
         const totalPixels = data.mat.length * (data.mat[0]?.length || 0);
         const minimumFilled = Math.ceil(totalPixels / 8);
         const transparentIndex = data.palette.findIndex(
-          (color) => color === ""
+          (color) => color === "",
         );
 
         let filledPixels = 0;
@@ -114,6 +114,6 @@ export const placementSchema = z.object({
           message: `Artwork must have at least ${minimumFilled} filled pixels (12.5% of ${totalPixels}). Currently has ${filledPixels} (${percentage}%)`,
           path: ["mat"],
         };
-      }
+      },
     ),
 });

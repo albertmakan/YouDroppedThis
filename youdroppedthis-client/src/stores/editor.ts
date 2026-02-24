@@ -88,8 +88,12 @@ export const useEditorStore = defineStore('editor', () => {
     return true
   }
 
-  function clearCanvas() {
+  function clearCanvas(clearHistory?: boolean) {
     pixels.value = pixels.value.map((r) => r.map(() => emptyPixel))
+    if (clearHistory) {
+      history.value = [{ pixels: pixels.value.map((row) => [...row]) }]
+      historyStep.value = 0
+    }
   }
 
   function setConfig(config: { canvasId: number; palette: string[]; resolution: number }) {

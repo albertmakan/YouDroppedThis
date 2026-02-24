@@ -170,7 +170,9 @@
           <p v-else-if="!authStore.user.confirmed_at">
             Please confirm your account to place artwork
           </p>
-          <p v-else-if="!hasEnoughCoinsToPlace">You don’t have enough coins to drop this here</p>
+          <p v-else-if="!hasEnoughCoinsToPlace">
+            You don’t have enough coins to drop this here. Check the drawer for your daily grant.
+          </p>
         </div>
         <button
           v-if="
@@ -483,7 +485,7 @@ async function placeArtwork() {
         isEditorOpen.value = false
         editorLocation.value = null
         isPlacing.value = false
-        editorStore.clearCanvas()
+        editorStore.clearCanvas(true)
         authStore.setProfileInfo(response.userProfile)
       },
       onError: (error) => {

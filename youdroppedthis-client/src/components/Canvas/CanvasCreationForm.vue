@@ -28,7 +28,10 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <div class="text-sm text-neutral-500 mb-1">Moment size</div>
-            <div class="font-medium">{{ canvasSizes[formData.canvasSize].label }}</div>
+            <div class="font-medium">
+              {{ canvasSizes[formData.canvasSize].label }} —
+              {{ canvasSizes[formData.canvasSize].subtitle }}
+            </div>
           </div>
           <div>
             <div class="text-sm text-neutral-500 mb-1">Artwork resolution</div>
@@ -113,7 +116,6 @@
               placeholder="e.g. Falling leaves"
               class="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-primary transition-colors"
             />
-            <p class="text-xs text-neutral-500 mt-1">This appears at the top of the canvas.</p>
           </div>
 
           <div>
@@ -125,7 +127,7 @@
               rows="3"
               class="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 focus:outline-none focus:border-primary transition-colors resize-y"
             />
-            <p class="text-xs text-neutral-500 mt-1">This sets the tone, not the rules.</p>
+            <p class="text-xs text-neutral-500 mt-1">This sets the tone or the rules.</p>
           </div>
         </section>
 
@@ -168,7 +170,6 @@
                 name="canvasSize"
                 :value="key"
                 v-model="formData.canvasSize"
-                @change="onCanvasSizeChange(key)"
                 class="sr-only"
               />
             </label>
@@ -184,7 +185,7 @@
 
           <div class="space-y-3">
             <label
-              v-for="size in canvasSizes[formData.canvasSize].artworkSizes"
+              v-for="size in [8, 16, 32, 64] as const"
               :key="size"
               :class="[
                 'block p-4 rounded-lg border-2 cursor-pointer transition-all',
@@ -228,7 +229,7 @@
             <p class="text-sm text-neutral-400">Choose the colors others can use here.</p>
           </div>
 
-          <PaletteEditor v-model="formData.palette" :min-colors="4" :max-colors="12" />
+          <PaletteEditor v-model="formData.palette" :min-colors="2" :max-colors="32" />
 
           <p class="text-xs text-neutral-500">
             The palette can't be changed once the moment begins.
@@ -336,30 +337,27 @@ const toast = useToast()
 const canvasSizes = {
   sm: {
     label: 'Small',
-    subtitle: 'Focused moment',
+    subtitle: '16 × 16 cells',
     grid: 16,
     lifetime: 12,
     fee: 150,
     helperText: 'Best for tight prompts and strong coherence.',
-    artworkSizes: [8, 16] as const,
   },
   md: {
     label: 'Medium',
-    subtitle: 'Shared space',
+    subtitle: '32 × 32 cells',
     grid: 32,
     lifetime: 24,
     fee: 250,
     helperText: 'A balanced space for shared exploration.',
-    artworkSizes: [8, 16] as const,
   },
   lg: {
     label: 'Large',
-    subtitle: 'Open event',
+    subtitle: '48 × 48 cells',
     grid: 48,
     lifetime: 36,
     fee: 400,
     helperText: 'Larger moments need care. Expect slower pacing.',
-    artworkSizes: [8, 16, 32] as const,
   },
 }
 
@@ -367,6 +365,7 @@ const artworkSizes = {
   8: { label: '8 × 8', subtitle: 'Fast, loose drops' },
   16: { label: '16 × 16', subtitle: 'Balanced detail' },
   32: { label: '32 × 32', subtitle: 'Slow, deliberate pieces' },
+  64: { label: '64 × 64', subtitle: 'High detail' },
 }
 
 const formData = ref({
@@ -384,17 +383,6 @@ const showReview = ref(false)
 const canSubmit = computed(() => {
   return formData.value.name.length >= 3 && formData.value.palette.length >= 4
 })
-
-function onCanvasSizeChange(size: keyof typeof canvasSizes) {
-  // Adjust artwork size default when canvas size changes
-  if (size === 'sm') {
-    formData.value.artworkSize = 8
-  } else if (formData.value.artworkSize === 32 && size !== 'lg') {
-    formData.value.artworkSize = 16
-  } else if (formData.value.artworkSize === 8) {
-    formData.value.artworkSize = 16
-  }
-}
 
 function hostMoment() {
   mutateCreateCanvas(formData.value, {
