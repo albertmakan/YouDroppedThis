@@ -10,6 +10,8 @@ export const colorSchema = z
 export const placementSchema = z.object({
   x: z.number().int(),
   y: z.number().int(),
+  guestName: z.string().min(1).max(32).optional(),
+  guestSessionId: z.string().uuid().optional(),
   pixelData: z
     .object({
       palette: colorSchema

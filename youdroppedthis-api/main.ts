@@ -17,7 +17,6 @@ router.use(
 );
 router.use(
   "/api/artworks",
-  authMiddleware,
   artworkRouter.routes(),
   artworkRouter.allowedMethods()
 );

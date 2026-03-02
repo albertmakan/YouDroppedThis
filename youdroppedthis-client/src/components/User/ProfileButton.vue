@@ -5,7 +5,7 @@
         <ProfilePicture :profile="authStore.user" />
       </button>
       <div
-        class="peer-focus:block hidden active:block focus:block absolute right-0 top-full bg-black rounded-lg w-fit shadow-md border border-neutral-600 mt-1"
+        class="peer-focus:block hidden active:block focus:block focus-within:block absolute right-0 top-full bg-black rounded-lg w-fit shadow-md border border-neutral-600 mt-1"
         tabindex="0"
       >
         <div class="flex gap-3 items-center p-3 border-b border-neutral-600">
@@ -43,6 +43,41 @@
       />
     </div>
   </template>
+  <template v-else-if="canvasId != null">
+    <div class="relative">
+      <button class="peer cursor-pointer text-primary border-2 border-current font-semibold p-3 py-1.5 rounded-md bg-black/50 backdrop-blur-xl text-left min-w-0 truncate max-w-[10rem]">
+        {{ guestIdentity?.guestName ?? 'Guest' }}
+      </button>
+      <div
+        class="peer-focus:block hidden active:block focus:block focus-within:block absolute right-0 top-full bg-black rounded-lg w-fit min-w-[12rem] shadow-md border border-neutral-600 mt-1 z-10"
+        tabindex="0"
+      >
+        <div class="p-3 border-b border-neutral-600">
+          <label class="text-xs text-neutral-400 block mb-1">Display name</label>
+          <input
+            v-model="guestNameInput"
+            type="text"
+            placeholder="Guest name"
+            class="w-full bg-neutral-800 border border-neutral-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            @keydown.enter.prevent="applyGuestName"
+          />
+          <button
+            @click="applyGuestName"
+            class="mt-2 w-full text-center text-sm py-1.5 rounded bg-neutral-700 hover:bg-neutral-600 transition-colors"
+          >
+            Update name
+          </button>
+        </div>
+        <button
+          @click="openAuthModal('login')"
+          class="flex gap-3 items-center text-left p-3 rounded-lg hover:bg-neutral-800 transition-colors font-medium text-sm w-full cursor-pointer"
+        >
+          Sign in
+        </button>
+      </div>
+    </div>
+    <AuthModal :is-open="showAuthModal" :initial-mode="authModalMode" @close="closeAuthModal" />
+  </template>
   <template v-else>
     <button
       @click="openAuthModal('login')"
@@ -55,14 +90,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/User/Auth.vue'
 import SettingsIcon from '@/assets/icons/settings.svg'
 import LogoutIcon from '@/assets/icons/logout.svg'
 import ProfilePicture from './ProfilePicture.vue'
 
+const props = defineProps<{
+  canvasId?: number | null
+}>()
+
 const authStore = useAuthStore()
+
+const guestIdentity = computed(() =>
+  props.canvasId != null ? authStore.getGuestIdentity(props.canvasId) : null,
+)
+
+const guestNameInput = ref('')
+watch(
+  () => guestIdentity.value?.guestName,
+  (name) => {
+    if (name) guestNameInput.value = name
+  },
+  { immediate: true }
+)
+
+function applyGuestName() {
+  const name = guestNameInput.value.trim()
+  if (name && props.canvasId != null) {
+    authStore.setGuestName(props.canvasId, name)
+  }
+}
 
 const showAuthModal = ref(false)
 const authModalMode = ref<'login' | 'register'>('login')

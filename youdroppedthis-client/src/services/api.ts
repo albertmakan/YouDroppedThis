@@ -57,6 +57,7 @@ export interface CanvasHostingRequest {
   palette: string[]
   backgroundColor: string
   placementFee: number
+  allowAnonymousPlacement: boolean
 }
 
 export const canvasApi = {
@@ -103,6 +104,8 @@ export interface PlacementRequest {
   x: number
   y: number
   pixelData: PixelData
+  guestName?: string
+  guestSessionId?: string
 }
 
 export const artworkApi = {

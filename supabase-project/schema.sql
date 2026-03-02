@@ -44,12 +44,22 @@ begin
   if (TG_OP = 'INSERT') then
     -- Placement event - send full artwork data
     event_type := 'placed';
-    -- Fetch creator profile info
-    SELECT jsonb_build_object('username', p.username, 'profile_picture', p.profile_picture)
-    INTO profile_info
-    FROM app.profiles p
-    WHERE p.id = NEW.created_by;
-    event_payload := to_jsonb(NEW) || jsonb_build_object('creator', profile_info);
+
+    if NEW.created_by is not null then
+      -- Fetch creator profile info for authenticated users
+      SELECT jsonb_build_object('username', p.username, 'profile_picture', p.profile_picture)
+      INTO profile_info
+      FROM app.profiles p
+      WHERE p.id = NEW.created_by;
+
+      event_payload := to_jsonb(NEW) || jsonb_build_object('creator', profile_info);
+    else
+      -- Anonymous placement, attach guest metadata instead
+      event_payload := to_jsonb(NEW) || jsonb_build_object(
+        'creator',
+        jsonb_build_object('username', NEW.guest_name, 'profile_picture', NULL)
+      );
+    end if;
     
   elsif (TG_OP = 'UPDATE' and OLD.collected_at is null and NEW.collected_at is not null) then
     -- Collection event - send minimal data
@@ -288,8 +298,10 @@ CREATE TABLE IF NOT EXISTS "app"."artworks" (
     "collectable_after" timestamp with time zone,
     "collected_at" timestamp with time zone,
     "is_expired" boolean DEFAULT false,
-    "created_by" "uuid" NOT NULL,
-    "collected_by" "uuid"
+    "created_by" "uuid",
+    "collected_by" "uuid",
+    "guest_name" text,
+    "guest_session_id" uuid
 );
 
 
@@ -331,7 +343,8 @@ CREATE TABLE IF NOT EXISTS "app"."canvases" (
     "end_at" timestamp with time zone,
     "total_artworks_placed" bigint DEFAULT '0'::bigint NOT NULL,
     "total_artworks_collected" bigint DEFAULT '0'::bigint NOT NULL,
-    "active_artworks_count" bigint DEFAULT '0'::bigint NOT NULL
+    "active_artworks_count" bigint DEFAULT '0'::bigint NOT NULL,
+    "allow_anonymous_placement" boolean DEFAULT false NOT NULL
 );
 
 
@@ -434,7 +447,11 @@ CREATE INDEX "artworks_expires_at_idx" ON "app"."artworks" USING "btree" ("expir
 
 
 
-CREATE INDEX "artworks_user_id_created_at_idx" ON "app"."artworks" USING "btree" ("created_by", "created_at" DESC);
+CREATE INDEX "artworks_user_id_created_at_idx" ON "app"."artworks" USING "btree" ("created_by", "created_at" DESC) WHERE ("created_by" IS NOT NULL);
+
+
+
+CREATE INDEX "artworks_guest_session_id_created_at_idx" ON "app"."artworks" USING "btree" ("guest_session_id", "created_at" DESC) WHERE ("guest_session_id" IS NOT NULL);
 
 
 

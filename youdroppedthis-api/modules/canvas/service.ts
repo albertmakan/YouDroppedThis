@@ -60,12 +60,16 @@ export class CanvasService {
     await db.queryArray("BEGIN");
 
     try {
+      const placementFee = hostingRequest.allowAnonymousPlacement
+        ? 0
+        : hostingRequest.placementFee;
+
       const canvasResult = await db.queryObject<Canvas>`
-        INSERT INTO app.canvases (name, description, placement_fee, artwork_expiry_minutes, min_visibility_minutes, max_artworks_per_user_per_hour, min_x, max_x, min_y, max_y, background_color, palette, artwork_resolution, created_by, end_at)
+        INSERT INTO app.canvases (name, description, placement_fee, artwork_expiry_minutes, min_visibility_minutes, max_artworks_per_user_per_hour, min_x, max_x, min_y, max_y, background_color, palette, artwork_resolution, created_by, end_at, allow_anonymous_placement)
         VALUES (
           ${hostingRequest.name},
           ${hostingRequest.description},
-          ${hostingRequest.placementFee},
+          ${placementFee},
           ${lifetime * 60},
           ${minVisibility * 60},
           ${5},
@@ -77,7 +81,8 @@ export class CanvasService {
           ${hostingRequest.palette},
           ${hostingRequest.artworkSize},
           ${userId},
-          NOW() + INTERVAL '1 hour' * ${lifetime}
+          NOW() + INTERVAL '1 hour' * ${lifetime},
+          ${hostingRequest.allowAnonymousPlacement}
         )
         RETURNING *`;
       const canvas = canvasResult.rows[0];
@@ -127,11 +132,11 @@ export class CanvasService {
     const result = await db.queryObject<Artwork>`
       SELECT a.*,
         jsonb_build_object(
-          'username', creator.username,
-          'profile_picture', creator.profile_picture
+          'username', COALESCE(creator.username, a.guest_name),
+          'profile_picture', COALESCE(creator.profile_picture, NULL)
         ) as creator
       FROM app.artworks a
-      JOIN app.profiles creator ON creator.id = a.created_by
+      LEFT JOIN app.profiles creator ON creator.id = a.created_by
       WHERE a.canvas_id = ${canvasId}
         AND a.x >= ${bounds.minX} AND a.x < ${bounds.maxX}
         AND a.y >= ${bounds.minY} AND a.y < ${bounds.maxY}

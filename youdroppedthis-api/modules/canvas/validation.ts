@@ -32,6 +32,8 @@ export const canvasHostingRequestSchema = z.object({
   placementFee: z
     .number()
     .int("Placement fee must be a whole number")
-    .min(8, "Placement fee cannot be less than 8 coins")
+    .min(0, "Placement fee cannot be less than 0 coins")
     .max(20, "Placement fee cannot be more than 20 coins"),
+
+  allowAnonymousPlacement: z.boolean().default(false),
 });

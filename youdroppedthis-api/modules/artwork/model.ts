@@ -6,7 +6,7 @@ export type PixelData = {
 export type Artwork = {
   id: bigint;
   pixel_data: PixelData;
-  created_by: string;
+  created_by?: string;
   canvas_id: bigint;
   x: number;
   y: number;
@@ -16,10 +16,14 @@ export type Artwork = {
   collected_by?: string;
   expires_at: string;
   is_expired?: boolean;
+  guest_name?: string;
+  guest_session_id?: string;
 };
 
 export type PlacementRequest = {
   x: number;
   y: number;
   pixelData: PixelData;
+  guestName?: string;
+  guestSessionId?: string;
 };

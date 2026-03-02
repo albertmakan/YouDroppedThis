@@ -165,18 +165,28 @@
       </template>
       <template v-slot:drop>
         <div class="text-xs text-neutral-400">
-          <p>Cost: {{ canvasInfo.canvas.placement_fee }} coins</p>
-          <p v-if="!authStore.user">Please sign in to place artwork</p>
-          <p v-else-if="!authStore.user.confirmed_at">
+          <p v-if="allowAnonymousPlacement && !authStore.user">
+            Cost: 0 coins • You’re drawing as
+            <span class="font-semibold">
+              {{ anonymousIdentity?.guestName ?? 'Guest' }}
+            </span>
+          </p>
+          <p v-else>
+            Cost: {{ canvasInfo.canvas.placement_fee }} coins
+          </p>
+          <p v-if="!allowAnonymousPlacement && !authStore.user">
+            Please sign in to place artwork
+          </p>
+          <p v-else-if="!allowAnonymousPlacement && authStore.user && !authStore.user.confirmed_at">
             Please confirm your account to place artwork
           </p>
-          <p v-else-if="!hasEnoughCoinsToPlace">
+          <p v-else-if="!allowAnonymousPlacement && !hasEnoughCoinsToPlace">
             You don’t have enough coins to drop this here. Check the drawer for your daily grant.
           </p>
         </div>
         <button
           v-if="
-            hasEnoughCoinsToPlace &&
+            (allowAnonymousPlacement || hasEnoughCoinsToPlace) &&
             (lastHourPlacementsCount ?? 0) < canvasInfo.canvas.max_artworks_per_user_per_hour
           "
           @click="placeArtwork"
@@ -271,6 +281,12 @@ const editorLocation = ref<{ x: number; y: number } | null>(null)
 
 const now = ref(new Date().toISOString())
 const hasEnded = computed(() => canvasInfo.value?.canvas.accepting_artworks === false)
+const allowAnonymousPlacement = computed(
+  () => canvasInfo.value?.canvas.allow_anonymous_placement ?? false,
+)
+const anonymousIdentity = computed(() =>
+  allowAnonymousPlacement.value ? authStore.getGuestIdentity(canvasId.value) : null,
+)
 const lastHourPlacementsCount = computed(() => {
   const oneHourAgo = new Date(Date.parse(now.value) - 3_600_000).toISOString()
   const lastHourCount = activityInfo.value?.recentActivity.reduce(
@@ -467,18 +483,25 @@ async function placeArtwork() {
   if (!editorLocation.value) {
     return
   }
-  if (!authStore.user) {
-    toast.warning('Please sign in to place artwork')
-    return
-  } else if (!authStore.user.confirmed_at) {
-    toast.warning('Please confirm your account to place artwork')
-    return
+
+  const isAnonymous = allowAnonymousPlacement.value && !authStore.user
+
+  if (!isAnonymous) {
+    if (!authStore.user) {
+      toast.warning('Please sign in to place artwork')
+      return
+    } else if (!authStore.user.confirmed_at) {
+      toast.warning('Please confirm your account to place artwork')
+      return
+    }
   }
   isPlacing.value = true
   mutatePlaceArtwork(
     {
       pixelData: editorStore.getPixelData(),
       ...editorLocation.value,
+      guestName: isAnonymous ? anonymousIdentity.value?.guestName : undefined,
+      guestSessionId: isAnonymous ? anonymousIdentity.value?.guestSessionId : undefined,
     },
     {
       onSuccess: (response) => {
@@ -486,7 +509,9 @@ async function placeArtwork() {
         editorLocation.value = null
         isPlacing.value = false
         editorStore.clearCanvas(true)
-        authStore.setProfileInfo(response.userProfile)
+        if (response.userProfile) {
+          authStore.setProfileInfo(response.userProfile)
+        }
       },
       onError: (error) => {
         toast.error(

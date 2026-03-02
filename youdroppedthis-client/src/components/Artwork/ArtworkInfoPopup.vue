@@ -15,7 +15,7 @@
       >
         <span class="inline-flex gap-[0.5em] items-center">
           <ProfilePicture :profile="artwork.creator" />
-          <span>{{ artwork.creator?.username }}</span>
+          <span class="text-nowrap">{{ artwork.creator?.username }}</span>
         </span>
         <div class="relative h-6">
           <button class="size-6 text-neutral-700 cursor-pointer peer">

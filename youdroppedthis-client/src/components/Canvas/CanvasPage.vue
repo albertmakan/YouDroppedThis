@@ -9,7 +9,7 @@
   </div>
   <div class="fixed top-0 right-0 flex gap-3 p-2 items-center z-20">
     <ShareButton v-bind="props" />
-    <ProfileButton />
+    <ProfileButton :canvas-id="props.canvasId" />
   </div>
   <CanvasView v-bind="props" :user-id="authStore.user?.id" />
   <Drawer ref="drawer" :canvas-id="props.canvasId" />

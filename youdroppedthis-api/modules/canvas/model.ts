@@ -23,6 +23,7 @@ export type Canvas = {
   total_artworks_placed: bigint;
   total_artworks_collected: bigint;
   active_artworks_count: bigint;
+  allow_anonymous_placement: boolean;
 };
 
 export type CanvasHostingRequest = {
@@ -33,4 +34,5 @@ export type CanvasHostingRequest = {
   palette: string[];
   backgroundColor: string;
   placementFee: number;
+  allowAnonymousPlacement: boolean;
 };

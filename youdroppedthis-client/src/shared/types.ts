@@ -25,7 +25,7 @@ export type MinimalProfileData = Pick<Profile, 'username' | 'profile_picture'>
 export type Artwork = {
   id: number
   pixel_data: PixelData
-  created_by: string
+  created_by?: string | null
   canvas_id: number
   x: number
   y: number
@@ -40,6 +40,8 @@ export type Artwork = {
   canvas_name?: string
   creator?: MinimalProfileData
   collector?: MinimalProfileData
+
+  guest_name?: string | null
 
   particles?: Particle[]
   collectionEffect?: Effect
@@ -72,6 +74,7 @@ export type CanvasInfo = {
   total_artworks_placed: number
   total_artworks_collected: number
   active_artworks_count: number
+  allow_anonymous_placement: boolean
 }
 
 export type RecentActivity = {

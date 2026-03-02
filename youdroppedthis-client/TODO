@@ -74,6 +74,7 @@
 - share button
 - right-click erase, center move
 
+- palette display wrap
 - improve color picker (triangle, list of values)
 - tune lifetime?
 - pixel-perfect line?

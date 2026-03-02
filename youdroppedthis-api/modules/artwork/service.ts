@@ -9,59 +9,91 @@ const COLLECTION_COOLDOWN_MINUTES = parseInt(
 
 export class ArtworkService {
   static async placeArtwork(
-    userId: string,
+    ctx: {
+      userId?: string;
+      guestName?: string;
+      guestSessionId?: string;
+    },
     canvasId: bigint,
     { x, y, pixelData }: PlacementRequest
   ) {
     const db = getDB();
 
     const canvasResult = await db.queryObject<Canvas>`
-      SELECT * FROM app.canvases WHERE id = ${canvasId}`;
+      SELECT *
+      FROM app.canvases
+      WHERE id = ${canvasId}`;
     if (!canvasResult.rowCount) {
       return { error: "Canvas not found", code: 404 };
     }
     const canvas = canvasResult.rows[0];
+
     const now = new Date().toISOString();
     if (!canvas.accepting_artworks || canvas.end_at < now) {
       return { error: "Canvas is not accepting artworks", code: 400 };
     }
-    if (
-      x < canvas.min_x ||
-      x > canvas.max_x ||
-      y < canvas.min_y ||
-      y > canvas.max_y
-    ) {
+    if (x < canvas.min_x || x > canvas.max_x || y < canvas.min_y || y > canvas.max_y) {
       return { error: "Position is out of bounds", code: 400 };
     }
     if (pixelData.mat.length !== canvas.artwork_resolution) {
       return { error: "Wrong resolution", code: 400 };
     }
 
-    // Check user balance
-    const userProfile = await UserService.getProfileById(userId);
-    if (!userProfile || userProfile.balance < canvas.placement_fee) {
-      return { error: "Insufficient balance", code: 402 };
-    }
+    const isAnonymous = !ctx.userId;
 
-    // Check rate limits (max n placements per hour)
-    if (
-      userProfile.last_placed_at &&
-      isInPastNMinutes(userProfile.last_placed_at, 60) &&
-      (userProfile.artworks_placed_count ?? 0) >
-        canvas.max_artworks_per_user_per_hour
-    ) {
+    if (!isAnonymous) {
+      const userId = ctx.userId!;
+      // Check user balance
+      const userProfile = await UserService.getProfileById(userId);
+      if (!userProfile || userProfile.balance < canvas.placement_fee) {
+        return { error: "Insufficient balance", code: 402 };
+      }
+
+      // Check rate limits (max n placements per hour)
+      if (
+        userProfile.last_placed_at &&
+        isInPastNMinutes(userProfile.last_placed_at, 60) &&
+        (userProfile.artworks_placed_count ?? 0) >
+          canvas.max_artworks_per_user_per_hour
+      ) {
+        const placementCountResult = await db.queryObject<{ count: bigint }>`
+          SELECT COUNT(*) AS count
+          FROM app.artworks
+          WHERE canvas_id = ${canvas.id}
+            AND created_by = ${userId}
+            AND created_at > NOW() - INTERVAL '1 hour'`;
+        if (placementCountResult.rows[0].count >= canvas.max_artworks_per_user_per_hour) {
+          return {
+            error: "Rate limit exceeded (placements per hour)",
+            code: 429,
+          };
+        }
+      }
+    } else {
+      if (!canvas.allow_anonymous_placement || canvas.placement_fee !== 0) {
+        return {
+          error: "Authentication required to place on this canvas",
+          code: 401,
+        };
+      }
+
+      if (!ctx.guestName || !ctx.guestSessionId) {
+        return {
+          error: "Anonymous placement requires guestName and guestSessionId",
+          code: 400,
+        };
+      }
+
+      // Anonymous rate limiting by guest_session_id
       const placementCountResult = await db.queryObject<{ count: bigint }>`
         SELECT COUNT(*) AS count
         FROM app.artworks
-        WHERE canvas_id = ${canvasId}
-          AND created_by = ${userId}
+        WHERE canvas_id = ${canvas.id}
+          AND guest_session_id = ${ctx.guestSessionId}
           AND created_at > NOW() - INTERVAL '1 hour'`;
-      if (
-        placementCountResult.rows[0].count >=
-        canvas.max_artworks_per_user_per_hour
-      ) {
+      if (placementCountResult.rows[0].count >= canvas.max_artworks_per_user_per_hour) {
         return {
-          error: "Rate limit exceeded (placements per hour)",
+          error: "Rate limit exceeded (anonymous placements)",
           code: 429,
         };
       }
@@ -73,30 +105,40 @@ export class ArtworkService {
     try {
       // Create artwork
       const artworkResult = await db.queryObject<Artwork>`
-        INSERT INTO app.artworks (canvas_id, created_by, x, y, pixel_data, expires_at, collectable_after)
+        INSERT INTO app.artworks (canvas_id, created_by, x, y, pixel_data, expires_at, collectable_after, guest_name, guest_session_id)
         VALUES (
-          ${canvasId}, ${userId},
-          ${x}, ${y},
+          ${canvas.id},
+          ${ctx.userId ?? null},
+          ${x},
+          ${y},
           ${pixelData},
           NOW() + INTERVAL '1 minute' * ${canvas.artwork_expiry_minutes},
-          NOW() + INTERVAL '1 minute' * ${canvas.min_visibility_minutes ?? 1}
+          NOW() + INTERVAL '1 minute' * ${canvas.min_visibility_minutes ?? 1},
+          ${ctx.guestName ?? null},
+          ${ctx.guestSessionId ?? null}
         )
         RETURNING *`;
       const artwork = artworkResult.rows[0];
 
-      // Record transaction
-      await TransactionService.recordTransaction({
-        user_id: userId,
-        type: "drop_fee",
-        amount: -canvas.placement_fee,
-        artwork_id: artwork.id,
-        canvas_id: canvasId,
-      });
+      if (!isAnonymous && canvas.placement_fee > 0) {
+        const userId = ctx.userId!;
+        // Record transaction
+        await TransactionService.recordTransaction({
+          user_id: userId,
+          type: "drop_fee",
+          amount: -canvas.placement_fee,
+          artwork_id: artwork.id,
+          canvas_id: canvas.id,
+        });
+      }
 
       await db.queryArray("COMMIT");
 
-      // Get updated user info
-      const userProfile = await UserService.getProfileById(userId);
+      let userProfile;
+      if (!isAnonymous) {
+        // Get updated user info
+        userProfile = await UserService.getProfileById(ctx.userId!);
+      }
 
       return { artwork, userProfile };
     } catch (error) {
@@ -183,16 +225,18 @@ export class ArtworkService {
         return { error: "Artwork could not be collected", code: 409 };
       }
 
-      const reward = this.calculateCollectionReward(artwork, placement_fee);
+      if (artwork.created_by && placement_fee > 0) {
+        const reward = this.calculateCollectionReward(artwork, placement_fee);
 
-      // Record transaction
-      await TransactionService.recordTransaction({
-        user_id: artwork.created_by,
-        type: "collection_reward",
-        amount: reward,
-        artwork_id: artwork.id,
-        canvas_id: canvasId,
-      });
+        // Record transaction
+        await TransactionService.recordTransaction({
+          user_id: artwork.created_by,
+          type: "collection_reward",
+          amount: reward,
+          artwork_id: artwork.id,
+          canvas_id: canvasId,
+        });
+      }
 
       await db.queryArray("COMMIT");
 

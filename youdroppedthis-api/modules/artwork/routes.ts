@@ -1,17 +1,18 @@
 import { Router } from "../../deps.ts";
 import { ArtworkService } from "./service.ts";
 import { placementSchema } from "./validation.ts";
+import { authMiddleware, optionalAuthMiddleware } from "../../middleware/auth.ts";
 
 export const artworkRouter = new Router();
 
-artworkRouter.post("/place", async (ctx) => {
-  const userId = ctx.state.user.id;
+artworkRouter.post("/place", optionalAuthMiddleware, async (ctx) => {
   const canvasId = BigInt(ctx.request.url.searchParams.get("canvas_id") || "");
   if (!canvasId) {
     ctx.response.status = 400;
     ctx.response.body = { error: "Invalid canvas id" };
     return;
   }
+
   const body = await ctx.request.body().value;
   const placementRequest = placementSchema.safeParse(body);
   if (!placementRequest.success) {
@@ -19,10 +20,17 @@ artworkRouter.post("/place", async (ctx) => {
     ctx.response.body = { error: placementRequest.error };
     return;
   }
+
+  const userId = ctx.state.user?.id as string | undefined;
+
   try {
     const { artwork, error, code, userProfile } =
       await ArtworkService.placeArtwork(
-        userId,
+        {
+          userId,
+          guestName: placementRequest.data.guestName,
+          guestSessionId: placementRequest.data.guestSessionId,
+        },
         canvasId,
         placementRequest.data
       );
@@ -38,7 +46,7 @@ artworkRouter.post("/place", async (ctx) => {
   }
 });
 
-artworkRouter.post("/collect/:id", async (ctx) => {
+artworkRouter.post("/collect/:id", authMiddleware, async (ctx) => {
   const userId = ctx.state.user.id;
   const canvasId = BigInt(ctx.request.url.searchParams.get("canvas_id") || "");
   if (!canvasId) {

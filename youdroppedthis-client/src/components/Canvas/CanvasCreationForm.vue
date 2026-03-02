@@ -246,10 +246,14 @@
                 <div>
                   <div class="font-medium">Cost to place an artwork</div>
                 </div>
-                <div class="text-primary font-semibold">{{ formData.placementFee }} coins</div>
+                <div class="text-primary font-semibold">
+                  <span v-if="formData.allowAnonymousPlacement">0 coins (anonymous)</span>
+                  <span v-else>{{ formData.placementFee }} coins</span>
+                </div>
               </div>
 
               <input
+                v-if="!formData.allowAnonymousPlacement"
                 type="range"
                 v-model.number="formData.placementFee"
                 min="8"
@@ -258,8 +262,29 @@
               />
 
               <p class="text-sm text-neutral-400 mt-2">
-                Higher fees slow things down. Lower fees invite exploration.
+                <span v-if="formData.allowAnonymousPlacement">
+                  Anonymous canvases are free to place on and do not generate rewards for placements.
+                </span>
+                <span v-else>
+                  Higher fees slow things down. Lower fees invite exploration.
+                </span>
               </p>
+            </div>
+
+            <div class="border-t border-neutral-800 pt-4 mt-2 space-y-2">
+              <label class="flex items-start gap-3 cursor-pointer">
+                <input
+                  v-model="formData.allowAnonymousPlacement"
+                  type="checkbox"
+                  class="mt-1 w-4 h-4 rounded border-neutral-600 bg-neutral-900 text-primary focus:ring-primary"
+                />
+                <div>
+                  <div class="font-medium">Allow anonymous (no-login) placements</div>
+                  <p class="text-sm text-neutral-400">
+                    Anyone can drop art here without signing in. Placements are free and do not earn rewards.
+                  </p>
+                </div>
+              </label>
             </div>
 
             <div class="flex justify-between items-start">
@@ -376,6 +401,7 @@ const formData = ref({
   palette: ['#14b8a6', '#f59e0b', '#ec4899', '#8b5cf6'],
   backgroundColor: '#0a0a0a',
   placementFee: 10,
+  allowAnonymousPlacement: false,
 })
 
 const showReview = ref(false)

@@ -32,18 +32,20 @@ export function usePlaceArtwork(canvasId: Ref<number>) {
   return useMutation({
     mutationFn: (placement: PlacementRequest) => artworkApi.placeArtwork(canvasId.value, placement),
     onSuccess: ({ userProfile, artwork }) => {
-      queryClient.resetQueries({ queryKey: ['artworks', 'user', userProfile.id, 'placed'] })
-      queryClient.resetQueries({ queryKey: ['transactions'] })
-      queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
-      queryClient.setQueryData(
-        ['canvas-activity', canvasId, userProfile.id],
-        (data?: { recentActivity: RecentActivity }) => ({
-          recentActivity: [
-            { artwork_id: artwork.id, event_time: artwork.created_at, kind: 'placement' },
-            ...(data?.recentActivity ?? []),
-          ] as RecentActivity,
-        }),
-      )
+      if (userProfile) {
+        queryClient.resetQueries({ queryKey: ['artworks', 'user', userProfile.id, 'placed'] })
+        queryClient.resetQueries({ queryKey: ['transactions'] })
+        queryClient.setQueryData(['profile', userProfile.id], () => userProfile)
+        queryClient.setQueryData(
+          ['canvas-activity', canvasId, userProfile.id],
+          (data?: { recentActivity: RecentActivity }) => ({
+            recentActivity: [
+              { artwork_id: artwork.id, event_time: artwork.created_at, kind: 'placement' },
+              ...(data?.recentActivity ?? []),
+            ] as RecentActivity,
+          }),
+        )
+      }
     },
   })
 }
