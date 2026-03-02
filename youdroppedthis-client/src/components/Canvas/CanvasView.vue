@@ -29,6 +29,18 @@
         <span class="text-neutral-500">•</span>
         🔍{{ Math.round(zoom * 100) }}%
       </button>
+      <button
+        @click="toggleBoxSelection"
+        class="mt-2 rounded-full px-2 py-1 border border-neutral-600 backdrop-blur-xl text-neutral-200 text-xs bg-black/50 cursor-pointer"
+        :class="isBoxSelectionActive ? 'bg-primary/30 border-primary' : ''"
+      >
+        Box select
+        <span v-if="boxSelectionBounds" class="text-neutral-400 ml-1">
+          ({{ boxSelectionBounds.minX }}, {{ boxSelectionBounds.minY }})–({{
+            boxSelectionBounds.maxX
+          }}, {{ boxSelectionBounds.maxY }})
+        </span>
+      </button>
     </div>
 
     <div v-if="authStore.isAuthenticated" class="fixed bottom-0 right-0 p-2 z-20">
@@ -97,6 +109,67 @@
       :class="isDragging ? 'cursor-grabbing' : 'cursor-grab'"
       style="image-rendering: pixelated"
     />
+    <div
+      v-if="isBoxSelectionActive && boxPreviewRect"
+      class="fixed pointer-events-none border-2 border-dashed"
+      :style="{
+        left: `${boxPreviewRect.left}px`,
+        top: `${boxPreviewRect.top}px`,
+        width: `${boxPreviewRect.width}px`,
+        height: `${boxPreviewRect.height}px`,
+        borderColor: gridColor,
+      }"
+    />
+    <div
+      v-if="boxSelectionBounds && boxSelectionRect"
+      class="fixed z-30 pointer-events-none border-2"
+      :style="{
+        left: `${boxSelectionRect.left}px`,
+        top: `${boxSelectionRect.top}px`,
+        width: `${boxSelectionRect.width}px`,
+        height: `${boxSelectionRect.height}px`,
+        borderColor: gridColor,
+      }"
+    />
+    <div
+      v-if="boxSelectionBounds && boxSelectionRect"
+      class="fixed z-30"
+      :style="{
+        left: `${boxSelectionRect.left}px`,
+        top: `${Math.max(boxSelectionRect.top - 48, 8)}px`,
+      }"
+    >
+      <div
+        class="pointer-events-auto backdrop-blur-xl bg-black/70 border border-neutral-700 rounded-md px-3 py-2 text-xs text-neutral-200 flex flex-col gap-1"
+      >
+        <div>
+          Box: ({{ boxSelectionBounds.minX }}, {{ boxSelectionBounds.minY }}) – ({{
+            boxSelectionBounds.maxX
+          }}, {{ boxSelectionBounds.maxY }})
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="border border-neutral-500 rounded px-2 py-1 cursor-pointer hover:bg-neutral-700"
+            @click="handleExportSelection"
+            :disabled="isExportingSelection"
+          >
+            {{ isExportingSelection ? 'Exporting…' : 'Export selection' }}
+          </button>
+          <button
+            class="border border-neutral-500 rounded px-2 py-1 cursor-pointer hover:bg-neutral-700"
+            @click="handleModerateSelection"
+          >
+            Moderate selection
+          </button>
+          <button
+            class="border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:bg-neutral-800"
+            @click="clearBoxSelection"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
     <div
       v-if="locationPreview && !selectedLocation?.artwork"
       class="fixed pointer-events-none border-2 border-current border-dashed"
@@ -382,6 +455,61 @@ const editorRelativeLocation = computed(
       : getArtworkRelativeCoordinates(editorLocation.value)),
 )
 
+// Box selection state
+const isBoxSelectionActive = ref(false)
+const boxCornerStart = ref<{ x: number; y: number } | null>(null)
+const boxCornerEnd = ref<{ x: number; y: number } | null>(null)
+const boxHoverCoords = ref<{ x: number; y: number } | null>(null)
+const isExportingSelection = ref(false)
+
+const boxSelectionBounds = computed(() => {
+  if (!boxCornerStart.value || !boxCornerEnd.value) return null
+  const x1 = boxCornerStart.value.x
+  const y1 = boxCornerStart.value.y
+  const x2 = boxCornerEnd.value.x
+  const y2 = boxCornerEnd.value.y
+  return {
+    minX: Math.min(x1, x2),
+    maxX: Math.max(x1, x2),
+    minY: Math.min(y1, y2),
+    maxY: Math.max(y1, y2),
+  }
+})
+
+const boxSelectionRect = computed(() => {
+  const bounds = boxSelectionBounds.value
+  if (!bounds) return null
+  const topLeft = getArtworkRelativeCoordinates({ x: bounds.minX, y: bounds.minY })
+  const bottomRight = getArtworkRelativeCoordinates({
+    x: bounds.maxX + 1,
+    y: bounds.maxY + 1,
+  })
+  return {
+    left: topLeft.x,
+    top: topLeft.y,
+    width: bottomRight.x - topLeft.x,
+    height: bottomRight.y - topLeft.y,
+  }
+})
+
+const boxPreviewRect = computed(() => {
+  if (!isBoxSelectionActive.value || !boxCornerStart.value) return null
+  const end = boxCornerEnd.value ?? boxHoverCoords.value
+  if (!end) return null
+  const minX = Math.min(boxCornerStart.value.x, end.x)
+  const maxX = Math.max(boxCornerStart.value.x, end.x)
+  const minY = Math.min(boxCornerStart.value.y, end.y)
+  const maxY = Math.max(boxCornerStart.value.y, end.y)
+  const topLeft = getArtworkRelativeCoordinates({ x: minX, y: minY })
+  const bottomRight = getArtworkRelativeCoordinates({ x: maxX + 1, y: maxY + 1 })
+  return {
+    left: topLeft.x,
+    top: topLeft.y,
+    width: bottomRight.x - topLeft.x,
+    height: bottomRight.y - topLeft.y,
+  }
+})
+
 const chunksRange = computed(() => {
   const { min_x, max_x, min_y, max_y } = canvasBounds.value
   const cx1 = Math.floor(Math.max(viewX.value / zoomedArtSize.value - min_x, 0) / CHUNK_SIZE)
@@ -457,6 +585,137 @@ function getEventLocation(e: MouseEvent | TouchEvent) {
 function isOutsideViewport(x: number, y: number) {
   const { x1, x2, y1, y2 } = viewBounds.value
   return x < x1 || x > x2 || y < y1 || y > y2
+}
+
+function clearBoxSelection() {
+  boxCornerStart.value = null
+  boxCornerEnd.value = null
+  boxHoverCoords.value = null
+}
+
+function toggleBoxSelection() {
+  isBoxSelectionActive.value = !isBoxSelectionActive.value
+  if (!isBoxSelectionActive.value) {
+    clearBoxSelection()
+  }
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string) {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Failed to create image blob'))
+        return
+      }
+      resolve(blob)
+    }, type)
+  })
+}
+
+async function handleExportSelection() {
+  if (!boxSelectionBounds.value) return
+  if (isExportingSelection.value) return
+
+  const bounds = boxSelectionBounds.value
+  const widthTiles = bounds.maxX - bounds.minX + 1
+  const heightTiles = bounds.maxY - bounds.minY + 1
+  const area = widthTiles * heightTiles
+
+  if (widthTiles < 1 || heightTiles < 1) {
+    toast.warning('Selection is too small to export')
+    return
+  }
+  if (area > 256) {
+    toast.warning('Selection is too large to export (max 256 tiles)')
+    return
+  }
+
+  isExportingSelection.value = true
+  try {
+    const { min_x, min_y } = canvasBounds.value
+    const cx1 = Math.floor((bounds.minX - min_x) / CHUNK_SIZE)
+    const cx2 = Math.floor((bounds.maxX - min_x) / CHUNK_SIZE)
+    const cy1 = Math.floor((bounds.minY - min_y) / CHUNK_SIZE)
+    const cy2 = Math.floor((bounds.maxY - min_y) / CHUNK_SIZE)
+
+    let isMissingAnyChunk = false
+    const artworks: Artwork[] = []
+    for (let cx = cx1; cx <= cx2; cx++) {
+      for (let cy = cy1; cy <= cy2; cy++) {
+        const chunk = getChunk(cx, cy)
+        if (!chunk?.artworks) {
+          isMissingAnyChunk = true
+          continue
+        }
+        for (const artwork of chunk.artworks) {
+          if (artwork.x < bounds.minX || artwork.x > bounds.maxX) continue
+          if (artwork.y < bounds.minY || artwork.y > bounds.maxY) continue
+          if (artwork.is_expired || artwork.collected_by) continue
+          artworks.push(artwork)
+        }
+      }
+    }
+    if (isMissingAnyChunk) {
+      toast.warning('Some of this area is not loaded yet; export may be incomplete')
+    }
+
+    const tileResolution =
+      artworks.reduce((acc, a) => {
+        const h = a.pixel_data.mat.length || 0
+        const w = a.pixel_data.mat[0]?.length ?? 0
+        return Math.max(acc, h, w)
+      }, 0) || 16
+
+    const exportCanvas = document.createElement('canvas')
+    exportCanvas.width = widthTiles * tileResolution
+    exportCanvas.height = heightTiles * tileResolution
+    const exportCtx = exportCanvas.getContext('2d')
+    if (!exportCtx) {
+      toast.error('Failed to export selection')
+      return
+    }
+    exportCtx.imageSmoothingEnabled = false
+
+    for (const artwork of artworks) {
+      if (!artwork.offscreenCanvas) {
+        artwork.offscreenCanvas = createOffscreenCanvas(artwork.pixel_data)
+      }
+      const dx = (artwork.x - bounds.minX) * tileResolution
+      const dy = (artwork.y - bounds.minY) * tileResolution
+      exportCtx.drawImage(
+        artwork.offscreenCanvas,
+        0,
+        0,
+        artwork.offscreenCanvas.width,
+        artwork.offscreenCanvas.height,
+        dx,
+        dy,
+        tileResolution,
+        tileResolution,
+      )
+    }
+
+    const blob = await canvasToBlob(exportCanvas, 'image/png')
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `canvas-${canvasId.value}-${bounds.minX}_${bounds.minY}-${bounds.maxX}_${bounds.maxY}.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error(error)
+    toast.error('Failed to export selection')
+  } finally {
+    isExportingSelection.value = false
+  }
+}
+
+function handleModerateSelection() {
+  if (!boxSelectionBounds.value) return
+  // TODO: integrate with moderation flow
+  console.log('Moderate selection bounds', boxSelectionBounds.value)
 }
 
 function reopenEditor() {
@@ -703,6 +962,19 @@ function setSelectedLocation(coords: { x: number; y: number }) {
 function handleClickLocation(event: MouseEvent | TouchEvent) {
   const { x, y } = getEventLocation(event)
   const coords = getCanvasCoordinates(x, y)
+  if (isBoxSelectionActive.value) {
+    const { min_x, max_x, min_y, max_y } = canvasBounds.value
+    if (coords.x < min_x || coords.x > max_x || coords.y < min_y || coords.y > max_y) {
+      return
+    }
+    if (!boxCornerStart.value || (boxCornerStart.value && boxCornerEnd.value)) {
+      boxCornerStart.value = coords
+      boxCornerEnd.value = null
+    } else {
+      boxCornerEnd.value = coords
+    }
+    return
+  }
   setSelectedLocation(coords)
 }
 
@@ -724,12 +996,17 @@ function handleMouseMove(event: MouseEvent | TouchEvent) {
     dragStart.value = { x, y }
     updateQueryParams()
   }
+  if (isBoxSelectionActive.value && boxCornerStart.value && !boxCornerEnd.value) {
+    const coords = getCanvasCoordinates(x, y)
+    boxHoverCoords.value = coords
+  }
 }
 
 function handleMouseUp() {
   isDragging.value = false
   initialPinchDistance.value = null
   lastZoom.value = zoom.value
+  boxHoverCoords.value = null
 }
 
 function setZoom(newZoom: number, centerX: number, centerY: number) {
@@ -830,6 +1107,8 @@ watch(
     isEditorOpen.value = false
     editorLocation.value = null
     editorLocationTaken.value = false
+    isBoxSelectionActive.value = false
+    clearBoxSelection()
   },
   { immediate: true },
 )
