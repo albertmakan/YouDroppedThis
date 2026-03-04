@@ -9,7 +9,7 @@ export class CanvasService {
   static async getHostedCanvasesByUser(
     userId: string,
     page: number,
-    limit: number
+    limit: number,
   ) {
     const db = getDB();
 
@@ -44,7 +44,7 @@ export class CanvasService {
 
   static async createCanvas(
     userId: string,
-    hostingRequest: CanvasHostingRequest
+    hostingRequest: CanvasHostingRequest,
   ) {
     // Check user balance
     const userProfile = await UserService.getProfileById(userId);
@@ -125,7 +125,7 @@ export class CanvasService {
 
   static async getArtworksInArea(
     canvasId: bigint,
-    bounds: { minX: number; maxX: number; minY: number; maxY: number }
+    bounds: { minX: number; maxX: number; minY: number; maxY: number },
   ) {
     const db = getDB();
 
@@ -149,7 +149,7 @@ export class CanvasService {
   static async getRecentActivity(
     canvasId: bigint,
     userId: string,
-    intervalHours: number
+    intervalHours: number,
   ) {
     const db = getDB();
 
@@ -178,6 +178,36 @@ export class CanvasService {
     return result.rows;
   }
 
+  static async expireArtworksInArea(
+    canvasId: bigint,
+    bounds: { minX: number; maxX: number; minY: number; maxY: number },
+  ) {
+    const db = getDB();
+
+    const result = await db.queryObject<{ id: bigint }>`
+      UPDATE app.artworks
+      SET is_expired = TRUE, expires_at = NOW()
+      WHERE canvas_id = ${canvasId}
+        AND x >= ${bounds.minX} AND x < ${bounds.maxX}
+        AND y >= ${bounds.minY} AND y < ${bounds.maxY}
+        AND is_expired = FALSE
+        AND collected_by IS NULL
+      RETURNING id`;
+
+    const count = result.rowCount ?? 0;
+
+    if (count > 0) {
+      await db.queryArray`
+        SELECT app.broadcast_area_cleared(
+          ${canvasId},
+          ${bounds.minX}, ${bounds.maxX},
+          ${bounds.minY}, ${bounds.maxY}
+        )`;
+    }
+
+    return count;
+  }
+
   static async claimHostReward(canvasId: bigint, userId: string) {
     const db = getDB();
 
@@ -203,7 +233,7 @@ export class CanvasService {
       const { amount: hostingFee } =
         await TransactionService.getCanvasCreationFee(
           canvas.id,
-          canvas.created_by!
+          canvas.created_by!,
         );
       const uniqueArtistsCountResult = await db.queryObject<{ count: bigint }>`
         SELECT COUNT(DISTINCT created_by) AS count
@@ -213,7 +243,7 @@ export class CanvasService {
       const reward = this.calculateHostReward(
         canvas,
         hostingFee,
-        Number(uniqueArtistsCountResult.rows[0].count)
+        Number(uniqueArtistsCountResult.rows[0].count),
       );
 
       // Record transaction
@@ -239,7 +269,7 @@ export class CanvasService {
   static calculateHostReward(
     canvas: Canvas,
     hostingFee: number,
-    uniqueArtistsCount: number
+    uniqueArtistsCount: number,
   ) {
     const maxReturn = hostingFee * 0.6;
     const placementScore = Math.sqrt(Number(canvas.total_artworks_placed));

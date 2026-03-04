@@ -98,6 +98,14 @@ export const canvasApi = {
     const response = await api.post(`/canvases/${canvasId}/reward`)
     return response.data as { canvas: CanvasInfo; userProfile: Profile; reward: number }
   },
+
+  async expireArtworksInArea(
+    id: number,
+    bounds: { minX: number; maxX: number; minY: number; maxY: number },
+  ) {
+    const response = await api.post(`/canvases/${id}/area/expire`, bounds)
+    return response.data as { expired: number }
+  },
 }
 
 export interface PlacementRequest {

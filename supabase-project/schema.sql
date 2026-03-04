@@ -32,6 +32,30 @@ CREATE TYPE "app"."transaction_type" AS ENUM (
 ALTER TYPE "app"."transaction_type" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app"."broadcast_area_cleared"(
+  p_canvas_id bigint,
+  p_min_x int,
+  p_max_x int,
+  p_min_y int,
+  p_max_y int
+) RETURNS void
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+begin
+  perform realtime.send(
+    jsonb_build_object(
+      'minX', p_min_x,
+      'maxX', p_max_x,
+      'minY', p_min_y,
+      'maxY', p_max_y
+    ),
+    'area_cleared',
+    'canvas:' || p_canvas_id,
+    TRUE
+  );
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION "app"."artwork_changes"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$

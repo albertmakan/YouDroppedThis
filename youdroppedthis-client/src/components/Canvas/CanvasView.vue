@@ -136,7 +136,7 @@
       class="fixed z-30"
       :style="{
         left: `${boxSelectionRect.left}px`,
-        top: `${Math.max(boxSelectionRect.top - 48, 8)}px`,
+        top: `${Math.max(boxSelectionRect.top - 64, 0)}px`,
       }"
     >
       <div
@@ -153,19 +153,27 @@
             @click="handleExportSelection"
             :disabled="isExportingSelection"
           >
-            {{ isExportingSelection ? 'Exporting…' : 'Export selection' }}
+            {{ isExportingSelection ? 'Exporting…' : 'Export as PNG' }}
           </button>
-          <button
-            class="border border-neutral-500 rounded px-2 py-1 cursor-pointer hover:bg-neutral-700"
-            @click="handleModerateSelection"
-          >
-            Moderate selection
-          </button>
-          <button
-            class="border border-neutral-700 rounded px-2 py-1 cursor-pointer hover:bg-neutral-800"
-            @click="clearBoxSelection"
-          >
-            Clear
+          <span v-if="canModerate" class="relative">
+            <button class="peer border border-neutral-500 rounded px-2 py-1 cursor-pointer hover:bg-neutral-700">
+              Moderate
+            </button>
+            <div
+              class="peer-focus:block hidden active:block focus:block focus-within:block absolute left-0 top-full mt-1 z-10 bg-black border border-neutral-600 rounded-lg shadow-md p-1 w-max"
+              tabindex="0"
+            >
+              <button
+                class="w-full text-left text-red-400 rounded px-2 py-1 cursor-pointer hover:bg-red-900/40 disabled:opacity-50 text-xs"
+                :disabled="isModeratingSelection"
+                @click="handleModerateSelection"
+              >
+                {{ isModeratingSelection ? 'Removing…' : 'Remove selection' }}
+              </button>
+            </div>
+          </span>
+          <button class="cursor-pointer size-6" @click="clearBoxSelection">
+            <XMarkIcon />
           </button>
         </div>
       </div>
@@ -244,12 +252,8 @@
               {{ anonymousIdentity?.guestName ?? 'Guest' }}
             </span>
           </p>
-          <p v-else>
-            Cost: {{ canvasInfo.canvas.placement_fee }} coins
-          </p>
-          <p v-if="!allowAnonymousPlacement && !authStore.user">
-            Please sign in to place artwork
-          </p>
+          <p v-else>Cost: {{ canvasInfo.canvas.placement_fee }} coins</p>
+          <p v-if="!allowAnonymousPlacement && !authStore.user">Please sign in to place artwork</p>
           <p v-else-if="!allowAnonymousPlacement && authStore.user && !authStore.user.confirmed_at">
             Please confirm your account to place artwork
           </p>
@@ -416,6 +420,31 @@ function handleRealtimeEvent(event: string, payload: any) {
       collected.collectionEffect = { progress: 0 }
       collected.collector = collector
     }
+  } else if (event === 'area_cleared') {
+    const { minX, maxX, minY, maxY } = payload as {
+      minX: number
+      maxX: number
+      minY: number
+      maxY: number
+    }
+    const { min_x, min_y } = canvasBounds.value
+    const cx1 = Math.floor((minX - min_x) / CHUNK_SIZE)
+    const cx2 = Math.floor((maxX - 1 - min_x) / CHUNK_SIZE)
+    const cy1 = Math.floor((minY - min_y) / CHUNK_SIZE)
+    const cy2 = Math.floor((maxY - 1 - min_y) / CHUNK_SIZE)
+    for (let cx = cx1; cx <= cx2; cx++) {
+      for (let cy = cy1; cy <= cy2; cy++) {
+        const chunk = chunks.get(getChunkKey(cx, cy))
+        if (!chunk?.artworks) continue
+        for (const artwork of chunk.artworks) {
+          if (artwork.is_expired || artwork.collected_by) continue
+          if (artwork.x < minX || artwork.x >= maxX) continue
+          if (artwork.y < minY || artwork.y >= maxY) continue
+          artwork.is_expired = true
+          artwork.particles = initializeDisintegrationParticles()
+        }
+      }
+    }
   }
 }
 
@@ -461,6 +490,13 @@ const boxCornerStart = ref<{ x: number; y: number } | null>(null)
 const boxCornerEnd = ref<{ x: number; y: number } | null>(null)
 const boxHoverCoords = ref<{ x: number; y: number } | null>(null)
 const isExportingSelection = ref(false)
+const isModeratingSelection = ref(false)
+
+const canModerate = computed(
+  () =>
+    canvasInfo.value?.canvas.created_by === authStore.user?.id &&
+    canvasInfo.value?.canvas.placement_fee === 0,
+)
 
 const boxSelectionBounds = computed(() => {
   if (!boxCornerStart.value || !boxCornerEnd.value) return null
@@ -712,10 +748,25 @@ async function handleExportSelection() {
   }
 }
 
-function handleModerateSelection() {
-  if (!boxSelectionBounds.value) return
-  // TODO: integrate with moderation flow
-  console.log('Moderate selection bounds', boxSelectionBounds.value)
+async function handleModerateSelection() {
+  if (!boxSelectionBounds.value || isModeratingSelection.value) return
+
+  isModeratingSelection.value = true
+  try {
+    const bounds = boxSelectionBounds.value
+    const { expired } = await canvasApi.expireArtworksInArea(canvasId.value, {
+      minX: bounds.minX,
+      maxX: bounds.maxX + 1,
+      minY: bounds.minY,
+      maxY: bounds.maxY + 1,
+    })
+    clearBoxSelection()
+    toast.success(`Removed ${expired} artwork${expired !== 1 ? 's' : ''}`)
+  } catch {
+    toast.error('Failed to moderate selection')
+  } finally {
+    isModeratingSelection.value = false
+  }
 }
 
 function reopenEditor() {

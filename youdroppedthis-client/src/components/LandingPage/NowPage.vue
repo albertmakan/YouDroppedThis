@@ -2,14 +2,15 @@
   <div class="min-h-screen dotted-background">
     <Header @open-drawer="drawerRef?.openDrawer" :show-host-option="authStore.isAuthenticated" />
     <div class="max-w-6xl mx-auto p-6">
-      <h1 class="text-2xl font-bold mb-2">Happening now</h1>
+      <h1 class="text-2xl font-bold mb-1">Happening now</h1>
+      <p class="text-sm text-neutral-500 mb-2">A handful of active canvases. More may be open.</p>
       <div class="my-10 gap-10 flex items-start justify-center flex-wrap">
         <CanvasCard v-for="canvas in data?.canvases" :canvas />
         <template v-if="isLoading">
           <div
             v-for="i in 5"
             :key="i"
-            class="bg-zinc-900 w-80 h-52 rounded-lg shrink-0 animate-pulse"
+            class="bg-zinc-900 w-80 max-w-full h-56 rounded-lg shrink-0 animate-pulse"
           ></div>
         </template>
       </div>

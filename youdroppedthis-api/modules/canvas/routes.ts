@@ -141,6 +141,71 @@ canvasRouter.get("/:id/area", async (ctx) => {
   }
 });
 
+canvasRouter.post("/:id/area/expire", authMiddleware, async (ctx) => {
+  const userId = ctx.state.user.id;
+  const canvasId = BigInt(ctx.params.id);
+  if (!canvasId) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Invalid id" };
+    return;
+  }
+  const body = await ctx.request.body().value;
+  const params = {
+    minX: body?.minX,
+    maxX: body?.maxX,
+    minY: body?.minY,
+    maxY: body?.maxY,
+  };
+  if (
+    params.minX == null ||
+    params.maxX == null ||
+    params.minY == null ||
+    params.maxY == null
+  ) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Invalid bounds" };
+    return;
+  }
+  const bounds = {
+    minX: parseInt(params.minX),
+    maxX: parseInt(params.maxX),
+    minY: parseInt(params.minY),
+    maxY: parseInt(params.maxY),
+  };
+  const w = bounds.maxX - bounds.minX;
+  const h = bounds.maxY - bounds.minY;
+  if (w < 1 || h < 1 || w * h > 256) {
+    ctx.response.status = 400;
+    ctx.response.body = { error: "Area too small or big" };
+    return;
+  }
+  try {
+    const canvas = await CanvasService.getCanvasInfo(canvasId);
+    if (!canvas) {
+      ctx.response.status = 404;
+      ctx.response.body = { error: "Canvas not found" };
+      return;
+    }
+    if (canvas.created_by !== userId) {
+      ctx.response.status = 403;
+      ctx.response.body = { error: "Only the host can moderate this canvas" };
+      return;
+    }
+    if (canvas.placement_fee !== 0) {
+      ctx.response.status = 403;
+      ctx.response.body = {
+        error: "Moderation is only available on free-placement canvases",
+      };
+      return;
+    }
+    const expired = await CanvasService.expireArtworksInArea(canvasId, bounds);
+    ctx.response.body = { expired };
+  } catch {
+    ctx.response.status = 500;
+    ctx.response.body = { error: "Failed to expire artworks" };
+  }
+});
+
 canvasRouter.post("/:id/reward", authMiddleware, async (ctx) => {
   const userId = ctx.state.user.id;
   const canvasId = BigInt(ctx.params.id);
@@ -281,14 +346,18 @@ function generatePreviewImage(
   // Palette swatches
   const swatchSize = 64;
   const gap = 12;
-  const totalWidth = palette.length * swatchSize + (palette.length - 1) * gap;
+  const swatchWidth = Math.min(
+    (width - (palette.length + 1) * gap) / palette.length,
+    swatchSize,
+  );
+  const totalWidth = palette.length * swatchWidth + (palette.length - 1) * gap;
   const startX = (width - totalWidth) / 2;
   const startY = (height - swatchSize) / 2;
 
   palette.forEach((color, i) => {
-    const x = startX + i * (swatchSize + gap);
+    const x = startX + i * (swatchWidth + gap);
     ctx.fillStyle = color;
-    ctx.fillRect(x, startY, swatchSize, swatchSize);
+    ctx.fillRect(x, startY, swatchWidth, swatchSize);
   });
 
   // Canvas name

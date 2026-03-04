@@ -96,6 +96,43 @@
       </div>
     </section>
 
+    <!-- Live With Your Community -->
+    <section class="mb-32">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">Live with your community</h2>
+      <p class="text-center text-neutral-500 mb-16 max-w-xl mx-auto">
+        Open a canvas. Share the link. See what happens together.
+      </p>
+
+      <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+          <div class="size-8 mb-4 text-neutral-400"><sparkle-icon /></div>
+          <h3 class="text-lg font-semibold mb-2">Streaming</h3>
+          <p class="text-neutral-400 text-sm leading-relaxed">
+            Open a canvas during your stream. Chat places art in real time. Box-select the result
+            and export it as a PNG.
+          </p>
+        </div>
+
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+          <div class="size-8 mb-4 text-neutral-400"><grid-icon /></div>
+          <h3 class="text-lg font-semibold mb-2">Game jams</h3>
+          <p class="text-neutral-400 text-sm leading-relaxed">
+            48 hours, one palette, your whole Discord. Crowdsource a sprite sheet and take it
+            straight into your project.
+          </p>
+        </div>
+
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-6">
+          <div class="size-8 mb-4 text-neutral-400"><users-icon /></div>
+          <h3 class="text-lg font-semibold mb-2">Any community</h3>
+          <p class="text-neutral-400 text-sm leading-relaxed">
+            A themed canvas for a release, an event, or just a vibe. Set the palette, open the
+            doors, see what your people make.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- Constraints as a Feature -->
     <section class="mb-32">
       <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">Limits create meaning</h2>
@@ -139,6 +176,21 @@
             <h3 class="text-xl font-semibold mb-2">The canvas has edges</h3>
             <p class="text-neutral-400 leading-relaxed">
               Space is finite. What you place changes the whole.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex gap-6 items-start">
+          <div
+            class="size-8 rounded-lg bg-gradient-to-br from-primary to-secondary p-1.5 text-white shrink-0"
+          >
+            <collect-icon />
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold mb-2">What's made can leave</h3>
+            <p class="text-neutral-400 leading-relaxed">
+              Box-select any region and export it as a PNG. Bring the canvas into your game, your
+              post, your project.
             </p>
           </div>
         </div>
@@ -248,14 +300,16 @@ import GridIcon from '@/assets/icons/grid.svg'
 import UsersIcon from '@/assets/icons/users.svg'
 import PaletteIcon from '@/assets/icons/palette.svg'
 import CoinsIcon from '@/assets/icons/coins.svg'
+import SparkleIcon from '@/assets/icons/sparkle.svg'
+import CollectIcon from '@/assets/icons/collect.svg'
 
 // Canvas demo animation
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const ctx = ref<CanvasRenderingContext2D | null>(null)
 
 // Grid configuration
-const gridSize = 8
-const cellSize = 8
+const gridSize = 16
+const cellSize = 4
 const colors = ['#14b8a6', '#f59e0b', '#06b6d4', '#8b5cf6', '#ec4899', '#10b981']
 const grid = Array.from({ length: gridSize * gridSize }, () => ({
   color: '',
@@ -318,7 +372,7 @@ onMounted(() => {
   ctx.value = canvasRef.value!.getContext('2d')
   render()
   // Initially populate some cells
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 60; i++) {
     setTimeout(addPiece, i * 100)
   }
   // Continue adding pieces
