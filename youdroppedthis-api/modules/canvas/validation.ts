@@ -36,4 +36,23 @@ export const canvasHostingRequestSchema = z.object({
     .max(20, "Placement fee cannot be more than 20 coins"),
 
   allowAnonymousPlacement: z.boolean().default(false),
+
+  artworkLifetime: z
+    .number()
+    .int("Artwork lifetime must be a whole number")
+    .min(1, "Artwork lifetime must be at least 1 minute")
+    .max(2880, "Artwork lifetime cannot exceed 48 hours"),
+
+  minVisibility: z
+    .number()
+    .int("Min visibility must be a whole number")
+    .min(1, "Min visibility must be at least 1 minute"),
+}).superRefine((data, ctx) => {
+  if (data.minVisibility >= data.artworkLifetime) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["minVisibility"],
+      message: "Min visibility must be less than artwork lifetime",
+    });
+  }
 });

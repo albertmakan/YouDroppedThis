@@ -35,4 +35,6 @@ export type CanvasHostingRequest = {
   backgroundColor: string;
   placementFee: number;
   allowAnonymousPlacement: boolean;
+  artworkLifetime: number;
+  minVisibility: number;
 };

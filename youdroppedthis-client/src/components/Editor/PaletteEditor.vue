@@ -43,6 +43,34 @@
       Some colors are duplicated. Consider using unique colors for variety.
     </p>
 
+    <!-- Paste area -->
+    <div class="mt-3">
+      <button
+        @click="showPasteArea = !showPasteArea"
+        class="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+      >
+        {{ showPasteArea ? 'Cancel' : 'Paste colors' }}
+      </button>
+
+      <div v-if="showPasteArea" class="mt-2 space-y-2">
+        <textarea
+          v-model="pasteText"
+          rows="3"
+          placeholder='["#ff0000", "#00ff00"] or #ff0000, #00ff00'
+          class="w-full bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2 text-xs font-mono text-neutral-300 focus:outline-none focus:border-primary transition-colors resize-none"
+        />
+        <div class="flex items-center gap-3">
+          <button
+            @click="applyPastedColors"
+            class="text-xs px-3 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition-colors font-medium"
+          >
+            Apply
+          </button>
+          <span v-if="pasteError" class="text-xs text-code-error">{{ pasteError }}</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Custom Color Picker (shown when a color is selected) -->
     <div v-if="selectedColorIndex !== null" class="mt-4 pt-4 border-t border-neutral-800">
       <div class="flex items-center justify-between mb-3">
@@ -93,6 +121,9 @@ const palette = computed({
 })
 
 const selectedColorIndex = ref<number | null>(null)
+const showPasteArea = ref(false)
+const pasteText = ref('')
+const pasteError = ref('')
 
 const hasDuplicates = computed(() => {
   return palette.value.length !== new Set(palette.value).size
@@ -111,7 +142,7 @@ function addColor() {
   if (palette.value.length < props.maxColors) {
     const newPalette = [
       ...palette.value,
-      selectedColorIndex.value === null ? '#ffffff' : palette.value[selectedColorIndex.value],
+      selectedColorIndex.value === null ? '#40bfbf' : palette.value[selectedColorIndex.value],
     ]
     palette.value = newPalette
     // Auto-select the new color for editing
@@ -125,6 +156,27 @@ function removeColor(index: number) {
     palette.value = newPalette
     selectedColorIndex.value = null
   }
+}
+
+function applyPastedColors() {
+  const matches = pasteText.value.match(/#[0-9a-fA-F]{3,6}/g) ?? []
+  const colors = matches
+    .map((c) => {
+      if (c.length === 4) {
+        return '#' + c[1] + c[1] + c[2] + c[2] + c[3] + c[3]
+      }
+      return c.toLowerCase()
+    })
+    .filter((c) => /^#[0-9a-f]{6}$/.test(c))
+  const unique = [...new Set(colors)]
+  if (unique.length < props.minColors) {
+    pasteError.value = `Need at least ${props.minColors} valid colors, found ${unique.length}.`
+    return
+  }
+  pasteError.value = ''
+  palette.value = unique.slice(0, props.maxColors)
+  showPasteArea.value = false
+  pasteText.value = ''
 }
 
 function updateColor(index: number, newColor: string) {

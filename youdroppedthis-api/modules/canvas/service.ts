@@ -48,8 +48,8 @@ export class CanvasService {
   ) {
     // Check user balance
     const userProfile = await UserService.getProfileById(userId);
-    const { fee, grid, lifetime, minVisibility } =
-      canvasSizes[hostingRequest.canvasSize];
+    const { fee, grid } = canvasSizes[hostingRequest.canvasSize];
+    const { artworkLifetime, minVisibility } = hostingRequest;
     if (!userProfile || userProfile.balance < fee) {
       return { error: "Insufficient balance", code: 402 };
     }
@@ -70,8 +70,8 @@ export class CanvasService {
           ${hostingRequest.name},
           ${hostingRequest.description},
           ${placementFee},
-          ${lifetime * 60},
-          ${minVisibility * 60},
+          ${artworkLifetime},
+          ${minVisibility},
           ${5},
           ${-grid / 2},
           ${grid / 2 - 1},
@@ -81,7 +81,7 @@ export class CanvasService {
           ${hostingRequest.palette},
           ${hostingRequest.artworkSize},
           ${userId},
-          NOW() + INTERVAL '1 hour' * ${lifetime},
+          NOW() + INTERVAL '1 minute' * ${artworkLifetime},
           ${hostingRequest.allowAnonymousPlacement}
         )
         RETURNING *`;

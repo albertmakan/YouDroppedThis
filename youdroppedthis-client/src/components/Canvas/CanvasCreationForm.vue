@@ -58,7 +58,16 @@
           </div>
           <div>
             <div class="text-sm text-neutral-500 mb-1">Artwork lifetime</div>
-            <div class="font-medium">{{ canvasSizes[formData.canvasSize].lifetime }} hours</div>
+            <div class="font-medium">
+              {{ lifetimeOptions.find((o) => o.value === formData.artworkLifetime)?.label }}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-sm text-neutral-500 mb-1">Min. visibility</div>
+          <div class="font-medium">
+            {{ allMinVisibilityOptions.find((o) => o.value === formData.minVisibility)?.label }}
           </div>
         </div>
 
@@ -222,6 +231,68 @@
           </div>
         </section>
 
+        <!-- Artwork Lifetime -->
+        <section class="space-y-4">
+          <div>
+            <h3 class="text-lg font-semibold mb-1">Artwork lifetime</h3>
+            <p class="text-sm text-neutral-400">How long art stays visible before fading.</p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <label
+              v-for="option in lifetimeOptions"
+              :key="option.value"
+              :class="[
+                'flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all text-center',
+                formData.artworkLifetime === option.value
+                  ? 'border-primary bg-primary/10'
+                  : 'border-neutral-800 hover:border-neutral-700',
+              ]"
+            >
+              <span class="font-semibold text-sm">{{ option.label }}</span>
+              <input
+                type="radio"
+                name="artworkLifetime"
+                :value="option.value"
+                v-model.number="formData.artworkLifetime"
+                class="sr-only"
+              />
+            </label>
+          </div>
+        </section>
+
+        <!-- Min Visibility -->
+        <section class="space-y-4">
+          <div>
+            <h3 class="text-lg font-semibold mb-1">Minimum visibility</h3>
+            <p class="text-sm text-neutral-400">
+              How long art must stay before it can be collected.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <label
+              v-for="option in minVisibilityOptions"
+              :key="option.value"
+              :class="[
+                'flex flex-col items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-all text-center',
+                formData.minVisibility === option.value
+                  ? 'border-primary bg-primary/10'
+                  : 'border-neutral-800 hover:border-neutral-700',
+              ]"
+            >
+              <span class="font-semibold text-sm">{{ option.label }}</span>
+              <input
+                type="radio"
+                name="minVisibility"
+                :value="option.value"
+                v-model.number="formData.minVisibility"
+                class="sr-only"
+              />
+            </label>
+          </div>
+        </section>
+
         <!-- Palette -->
         <section class="space-y-4">
           <div>
@@ -263,11 +334,10 @@
 
               <p class="text-sm text-neutral-400 mt-2">
                 <span v-if="formData.allowAnonymousPlacement">
-                  Anonymous canvases are free to place on and do not generate rewards for placements.
+                  Anonymous canvases are free to place on and do not generate rewards for
+                  placements.
                 </span>
-                <span v-else>
-                  Higher fees slow things down. Lower fees invite exploration.
-                </span>
+                <span v-else> Higher fees slow things down. Lower fees invite exploration. </span>
               </p>
             </div>
 
@@ -281,7 +351,8 @@
                 <div>
                   <div class="font-medium">Allow anonymous (no-login) placements</div>
                   <p class="text-sm text-neutral-400">
-                    Anyone can drop art here without signing in. Placements are free and do not earn rewards.
+                    Anyone can drop art here without signing in. Placements are free and do not earn
+                    rewards.
                   </p>
                 </div>
               </label>
@@ -292,17 +363,7 @@
                 <div class="font-medium">Placement pace</div>
                 <p class="text-sm text-neutral-400 mt-0.5">Slower pacing keeps moments readable.</p>
               </div>
-              <div class="text-neutral-300 font-semibold">5 / hour</div>
-            </div>
-
-            <div class="flex justify-between items-start">
-              <div>
-                <div class="font-medium">Artwork lifetime</div>
-                <p class="text-sm text-neutral-400 mt-0.5">Art here fades with time.</p>
-              </div>
-              <div class="text-neutral-300 font-semibold">
-                {{ canvasSizes[formData.canvasSize].lifetime }} hours
-              </div>
+              <div class="text-neutral-300 font-semibold">5 / user / hour</div>
             </div>
           </div>
         </section>
@@ -343,7 +404,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { AxiosError } from 'axios'
 import { useAuthStore } from '@/stores/auth'
@@ -364,7 +425,6 @@ const canvasSizes = {
     label: 'Small',
     subtitle: '16 × 16 cells',
     grid: 16,
-    lifetime: 12,
     fee: 150,
     helperText: 'Best for tight prompts and strong coherence.',
   },
@@ -372,7 +432,6 @@ const canvasSizes = {
     label: 'Medium',
     subtitle: '32 × 32 cells',
     grid: 32,
-    lifetime: 24,
     fee: 250,
     helperText: 'A balanced space for shared exploration.',
   },
@@ -380,7 +439,6 @@ const canvasSizes = {
     label: 'Large',
     subtitle: '48 × 48 cells',
     grid: 48,
-    lifetime: 36,
     fee: 400,
     helperText: 'Larger moments need care. Expect slower pacing.',
   },
@@ -393,16 +451,50 @@ const artworkSizes = {
   64: { label: '64 × 64', subtitle: 'High detail' },
 }
 
+const lifetimeOptions = [
+  { value: 60, label: '1 hour' },
+  { value: 180, label: '3 hours' },
+  { value: 360, label: '6 hours' },
+  { value: 720, label: '12 hours' },
+  { value: 1440, label: '1 day' },
+  { value: 2880, label: '2 days' },
+]
+
+const allMinVisibilityOptions = [
+  { value: 15, label: '15 min' },
+  { value: 30, label: '30 min' },
+  { value: 60, label: '1 hour' },
+  { value: 180, label: '3 hours' },
+  { value: 360, label: '6 hours' },
+  { value: 720, label: '12 hours' },
+]
+
+const minVisibilityOptions = computed(() =>
+  allMinVisibilityOptions.filter((o) => o.value < formData.value.artworkLifetime),
+)
+
 const formData = ref({
   name: '',
   description: '',
   canvasSize: 'sm' as keyof typeof canvasSizes,
   artworkSize: 8,
   palette: ['#14b8a6', '#f59e0b', '#ec4899', '#8b5cf6'],
-  backgroundColor: '#0a0a0a',
+  backgroundColor: '#1c1717',
   placementFee: 10,
   allowAnonymousPlacement: false,
+  artworkLifetime: 720,
+  minVisibility: 180,
 })
+
+watch(
+  () => formData.value.artworkLifetime,
+  (newLifetime) => {
+    if (formData.value.minVisibility >= newLifetime) {
+      const valid = allMinVisibilityOptions.filter((o) => o.value < newLifetime)
+      formData.value.minVisibility = valid[valid.length - 1]?.value ?? 15
+    }
+  },
+)
 
 const showReview = ref(false)
 
